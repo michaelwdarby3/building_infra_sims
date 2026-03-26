@@ -84,6 +84,7 @@ class RegisterDefinition:
         initial_value: Any = 0,
         behavior: ValueBehavior | None = None,
         register_type: str = "holding",
+        unit: str = "noUnits",
     ):
         self.address = address
         self.name = name
@@ -91,6 +92,7 @@ class RegisterDefinition:
         self.initial_value = initial_value
         self.behavior = behavior
         self.register_type = register_type
+        self.unit = unit
         self.count = REGISTER_COUNTS.get(datatype, 1)
 
 
@@ -123,6 +125,7 @@ class ModbusDeviceSimulator:
         initial_value: Any = 0,
         behavior: ValueBehavior | None = None,
         register_type: str = "holding",
+        unit: str = "noUnits",
     ) -> None:
         """Add a register definition."""
         self._registers.append(
@@ -133,6 +136,7 @@ class ModbusDeviceSimulator:
                 initial_value=initial_value,
                 behavior=behavior,
                 register_type=register_type,
+                unit=unit,
             )
         )
 

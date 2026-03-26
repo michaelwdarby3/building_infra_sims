@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Building Sim - Overview{% endblock %}
+
+{% block content %}
+<h2>Simulator Overview</h2>
+
+<div class="stats-grid">
+    <article class="stat-card">
+        <div class="value">{{ total_devices }}</div>
+        <div class="label">Devices</div>
+    </article>
+    <article class="stat-card">
+        <div class="value">{{ running }}</div>
+        <div class="label">Running</div>
+    </article>
+    <article class="stat-card">
+        <div class="value">{{ registered }}</div>
+        <div class="label">Registered</div>
+    </article>
+    <article class="stat-card">
+        <div class="value">{{ bacnet_count }}</div>
+        <div class="label">BACnet</div>
+    </article>
+    <article class="stat-card">
+        <div class="value">{{ modbus_count }}</div>
+        <div class="label">Modbus</div>
+    </article>
+    <article class="stat-card">
+        <div class="value">{{ gateway_stats.total }}</div>
+        <div class="label">Gateway Conns</div>
+    </article>
+</div>
+
+{% if devices %}
+<h3>Active Devices</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Protocol</th>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Address</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th>Gateway</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in devices %}
+        <tr>
+            <td><span class="badge badge-{{ d.protocol | lower }}">{{ d.protocol }}</span></td>
+            <td>{{ d.name }}</td>
+            <td>{{ d.device_id }}</td>
+            <td><code>{{ d.address }}</code></td>
+            <td>{{ d.points }}</td>
+            <td><span class="badge badge-{{ d.status }}">{{ d.status }}</span></td>
+            <td><span class="badge badge-{{ 'yes' if d.registered else 'no' }}">{{ "registered" if d.registered else "local only" }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<article>
+    <p>No devices running. Go to <a href="/devices">Devices</a> to start simulators or load a scenario.</p>
+</article>
+{% endif %}
+{% endblock %}

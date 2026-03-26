@@ -1,0 +1,129 @@
+name: "Generic HVAC Controller"
+description: "Zone-level HVAC controller with temp, humidity, damper, and fan"
+unit_id: 1
+port: 10510
+
+registers:
+  holding:
+    - address: 0
+      name: "Zone Temperature"
+      datatype: FLOAT32
+      unit: degF
+      initial_value: 72.0
+      behavior:
+        type: sine_wave
+        center: 72.0
+        amplitude: 3.0
+        period: 7200
+
+    - address: 2
+      name: "Zone Temp Setpoint"
+      datatype: FLOAT32
+      unit: degF
+      initial_value: 72.0
+
+    - address: 4
+      name: "Zone Humidity"
+      datatype: FLOAT32
+      unit: "%RH"
+      initial_value: 45.0
+      behavior:
+        type: random_walk
+        center: 45.0
+        step_size: 1.0
+        min: 30.0
+        max: 65.0
+
+    - address: 6
+      name: "Damper Position"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 50.0
+      behavior:
+        type: sine_wave
+        center: 50.0
+        amplitude: 30.0
+        period: 3600
+
+    - address: 8
+      name: "Fan Speed"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 60.0
+      behavior:
+        type: sine_wave
+        center: 60.0
+        amplitude: 25.0
+        period: 3600
+
+    - address: 10
+      name: "Heating Output"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 0.0
+      behavior:
+        type: sine_wave
+        center: 20.0
+        amplitude: 20.0
+        period: 1800
+
+    - address: 12
+      name: "Cooling Output"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 30.0
+      behavior:
+        type: sine_wave
+        center: 30.0
+        amplitude: 25.0
+        period: 1800
+
+    - address: 14
+      name: "Mode"
+      datatype: UINT16
+      unit: mode
+      initial_value: 2
+      behavior:
+        type: schedule
+        schedule:
+          "06:00": 2
+          "18:00": 3
+          "22:00": 1
+        default: 1
+
+    - address: 15
+      name: "Occupancy"
+      datatype: UINT16
+      unit: status
+      initial_value: 1
+      behavior:
+        type: schedule
+        schedule:
+          "07:00": 1
+          "19:00": 0
+        default: 0
+
+    - address: 16
+      name: "Supply Air Temp"
+      datatype: FLOAT32
+      unit: degF
+      initial_value: 55.0
+      behavior:
+        type: random_walk
+        center: 55.0
+        step_size: 1.0
+        min: 50.0
+        max: 65.0
+
+  input:
+    - address: 0
+      name: "Controller Status"
+      datatype: UINT16
+      unit: status
+      initial_value: 1
+
+    - address: 1
+      name: "Alarm Code"
+      datatype: UINT16
+      unit: code
+      initial_value: 0

@@ -1,0 +1,64 @@
+{% if devices %}
+<table>
+    <thead>
+        <tr>
+            <th>Protocol</th>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Address</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th>Gateway</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in devices %}
+        <tr>
+            <td><span class="badge badge-{{ d.protocol | lower }}">{{ d.protocol }}</span></td>
+            <td>{{ d.name }}</td>
+            <td>{{ d.device_id }}</td>
+            <td><code>{{ d.address }}</code></td>
+            <td>{{ d.points }}</td>
+            <td><span class="badge badge-{{ d.status }}">{{ d.status }}</span></td>
+            <td>
+                {% if d.registered %}
+                    <span class="badge badge-yes">registered</span>
+                {% else %}
+                    <span class="badge badge-no">local only</span>
+                {% endif %}
+            </td>
+            <td>
+                <div class="actions">
+                    {% if d.status == "running" and not d.registered %}
+                    <form method="post" action="/actions/register-device/{{ d.id }}">
+                        <button type="submit">Register</button>
+                    </form>
+                    {% endif %}
+                    {% if d.registered %}
+                    <form method="post" action="/actions/unregister-device/{{ d.id }}">
+                        <button type="submit" class="btn-secondary">Unregister</button>
+                    </form>
+                    {% endif %}
+                    {% if d.status == "running" %}
+                    <form method="post" action="/actions/stop-device/{{ d.id }}">
+                        <button type="submit" class="btn-danger">Stop</button>
+                    </form>
+                    {% endif %}
+                    {% if d.status != "running" %}
+                    <form method="post" action="/actions/remove-device/{{ d.id }}">
+                        <button type="submit" class="btn-danger">Remove</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% if d.error %}
+                <small style="color: var(--pico-del-color);">{{ d.error }}</small>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No devices. Load a scenario or start individual devices above.</em></p>
+{% endif %}

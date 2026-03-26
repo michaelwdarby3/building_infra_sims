@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Devices - Control Panel{% endblock %}
+
+{% block content %}
+<h2>Device Control Panel</h2>
+
+{# ── Load a scenario ── #}
+<details class="panel" {% if not devices %}open{% endif %}>
+    <summary><strong>Load Scenario</strong> — start a full set of devices at once</summary>
+    {% if scenarios %}
+    {% for s in scenarios %}
+    <article>
+        <div class="grid">
+            <div>
+                <strong>{{ s.name }}</strong><br>
+                <small>{{ s.description }}</small><br>
+                <small>{{ s.bacnet_count }} BACnet + {{ s.modbus_count }} Modbus = {{ s.total }} devices</small>
+            </div>
+            <div style="text-align: right; align-self: center;">
+                <form method="post" action="/actions/load-scenario">
+                    <input type="hidden" name="scenario_path" value="{{ s.path }}">
+                    <button type="submit">Load</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+    {% else %}
+    <p><em>No scenario files found.</em></p>
+    {% endif %}
+</details>
+
+{# ── Start individual device ── #}
+<details class="panel">
+    <summary><strong>Start Individual Device</strong> — pick a profile to launch</summary>
+
+    {% if profiles.bacnet %}
+    <h4>BACnet Profiles</h4>
+    {% for p in profiles.bacnet %}
+    <article>
+        <div class="grid">
+            <div>
+                <strong>{{ p.name }}</strong><br>
+                <small>{{ p.description }}</small>
+            </div>
+            <div style="text-align: right; align-self: center;">
+                <form method="post" action="/actions/start-device">
+                    <input type="hidden" name="profile_path" value="{{ p.path }}">
+                    <input type="hidden" name="protocol" value="bacnet">
+                    <button type="submit">Start</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+    {% endif %}
+
+    {% if profiles.modbus %}
+    <h4>Modbus Profiles</h4>
+    {% for p in profiles.modbus %}
+    <article>
+        <div class="grid">
+            <div>
+                <strong>{{ p.name }}</strong><br>
+                <small>{{ p.description }}</small>
+            </div>
+            <div style="text-align: right; align-self: center;">
+                <form method="post" action="/actions/start-device">
+                    <input type="hidden" name="profile_path" value="{{ p.path }}">
+                    <input type="hidden" name="protocol" value="modbus">
+                    <button type="submit">Start</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+    {% endif %}
+</details>
+
+{# ── Running devices ── #}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3 style="margin: 0;">Running Devices ({{ devices | length }})</h3>
+    {% if devices %}
+    <div class="actions">
+        <form method="post" action="/actions/register-all"><button type="submit">Register All</button></form>
+        <form method="post" action="/actions/unregister-all"><button type="submit" class="btn-secondary">Unregister All</button></form>
+        <form method="post" action="/actions/stop-all"><button type="submit" class="btn-danger">Stop All</button></form>
+    </div>
+    {% endif %}
+</div>
+
+<div id="devices-table"
+     hx-get="/api/devices"
+     hx-trigger="every 5s"
+     hx-swap="innerHTML">
+    {% include "partials/devices_table.html" %}
+</div>
+
+{% endblock %}

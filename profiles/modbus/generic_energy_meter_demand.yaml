@@ -1,0 +1,182 @@
+name: "Generic Energy Meter (Demand)"
+description: "Advanced power meter with demand tracking and power quality"
+unit_id: 1
+port: 10511
+
+registers:
+  holding:
+    # ── Basic power ──
+    - address: 0
+      name: "Voltage L-N Avg"
+      datatype: FLOAT32
+      unit: V
+      initial_value: 277.0
+      behavior:
+        type: random_walk
+        center: 277.0
+        step_size: 1.0
+        min: 270.0
+        max: 285.0
+
+    - address: 2
+      name: "Current Avg"
+      datatype: FLOAT32
+      unit: A
+      initial_value: 85.0
+      behavior:
+        type: sine_wave
+        center: 80.0
+        amplitude: 30.0
+        period: 3600
+
+    - address: 4
+      name: "Total kW"
+      datatype: FLOAT32
+      unit: kW
+      initial_value: 65.0
+      behavior:
+        type: sine_wave
+        center: 60.0
+        amplitude: 25.0
+        period: 3600
+
+    - address: 6
+      name: "Total kVA"
+      datatype: FLOAT32
+      unit: kVA
+      initial_value: 70.0
+      behavior:
+        type: sine_wave
+        center: 65.0
+        amplitude: 25.0
+        period: 3600
+
+    - address: 8
+      name: "Total kVAR"
+      datatype: FLOAT32
+      unit: kVAR
+      initial_value: 15.0
+      behavior:
+        type: sine_wave
+        center: 12.0
+        amplitude: 8.0
+        period: 3600
+
+    - address: 10
+      name: "Power Factor"
+      datatype: FLOAT32
+      unit: PF
+      initial_value: 0.92
+      behavior:
+        type: random_walk
+        center: 0.92
+        step_size: 0.01
+        min: 0.80
+        max: 1.0
+
+    - address: 12
+      name: "Frequency"
+      datatype: FLOAT32
+      unit: Hz
+      initial_value: 60.0
+      behavior:
+        type: random_walk
+        center: 60.0
+        step_size: 0.01
+        min: 59.95
+        max: 60.05
+
+    # ── Energy totals ──
+    - address: 20
+      name: "Total kWh"
+      datatype: FLOAT32
+      unit: kWh
+      initial_value: 456789.0
+      behavior:
+        type: accumulator
+        initial: 456789.0
+        rate_per_second: 0.017
+
+    - address: 22
+      name: "Total kVARh"
+      datatype: FLOAT32
+      unit: kVARh
+      initial_value: 98765.0
+      behavior:
+        type: accumulator
+        initial: 98765.0
+        rate_per_second: 0.003
+
+    # ── Demand ──
+    - address: 30
+      name: "Demand kW"
+      datatype: FLOAT32
+      unit: kW
+      initial_value: 58.0
+      behavior:
+        type: sine_wave
+        center: 55.0
+        amplitude: 20.0
+        period: 900
+
+    - address: 32
+      name: "Demand kVA"
+      datatype: FLOAT32
+      unit: kVA
+      initial_value: 63.0
+      behavior:
+        type: sine_wave
+        center: 60.0
+        amplitude: 20.0
+        period: 900
+
+    - address: 34
+      name: "Max Demand kW"
+      datatype: FLOAT32
+      unit: kW
+      initial_value: 92.0
+      behavior:
+        type: accumulator
+        initial: 92.0
+        rate_per_second: 0.0001
+
+    - address: 36
+      name: "TDD Percent"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 4.5
+      behavior:
+        type: random_walk
+        center: 4.5
+        step_size: 0.2
+        min: 1.0
+        max: 10.0
+
+    - address: 40
+      name: "Demand Reset Counter"
+      datatype: UINT16
+      unit: count
+      initial_value: 47
+
+  input:
+    - address: 0
+      name: "Meter Status"
+      datatype: UINT16
+      unit: status
+      initial_value: 1
+
+    - address: 1
+      name: "Error Flags"
+      datatype: UINT16
+      unit: flags
+      initial_value: 0
+
+    - address: 2
+      name: "Comm Watchdog"
+      datatype: UINT16
+      unit: count
+      initial_value: 0
+      behavior:
+        type: accumulator
+        initial: 0
+        rate_per_second: 0.2

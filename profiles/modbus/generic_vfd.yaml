@@ -9,6 +9,7 @@ registers:
     - address: 0
       name: "Output Frequency"
       datatype: FLOAT32
+      unit: Hz
       initial_value: 45.0
       behavior:
         type: sine_wave
@@ -19,11 +20,13 @@ registers:
     - address: 2
       name: "Speed Reference"
       datatype: FLOAT32
+      unit: Hz
       initial_value: 45.0
 
     - address: 4
       name: "Motor Speed RPM"
       datatype: FLOAT32
+      unit: RPM
       initial_value: 1350.0
       behavior:
         type: sine_wave
@@ -35,6 +38,7 @@ registers:
     - address: 10
       name: "Output Current"
       datatype: FLOAT32
+      unit: A
       initial_value: 12.5
       behavior:
         type: sine_wave
@@ -45,6 +49,7 @@ registers:
     - address: 12
       name: "Output Voltage"
       datatype: FLOAT32
+      unit: V
       initial_value: 380.0
       behavior:
         type: random_walk
@@ -56,6 +61,7 @@ registers:
     - address: 14
       name: "Output Power kW"
       datatype: FLOAT32
+      unit: kW
       initial_value: 5.5
       behavior:
         type: sine_wave
@@ -66,6 +72,7 @@ registers:
     - address: 16
       name: "DC Bus Voltage"
       datatype: FLOAT32
+      unit: V
       initial_value: 540.0
       behavior:
         type: random_walk
@@ -78,6 +85,7 @@ registers:
     - address: 20
       name: "Heatsink Temperature"
       datatype: FLOAT32
+      unit: degC
       initial_value: 45.0
       behavior:
         type: random_walk
@@ -89,6 +97,7 @@ registers:
     - address: 22
       name: "Motor Temperature"
       datatype: FLOAT32
+      unit: degC
       initial_value: 55.0
       behavior:
         type: random_walk
@@ -101,6 +110,7 @@ registers:
     - address: 30
       name: "Run Hours"
       datatype: FLOAT32
+      unit: hrs
       initial_value: 12500.0
       behavior:
         type: accumulator
@@ -110,6 +120,7 @@ registers:
     - address: 32
       name: "Energy kWh"
       datatype: FLOAT32
+      unit: kWh
       initial_value: 87500.0
       behavior:
         type: accumulator
@@ -120,14 +131,17 @@ registers:
     - address: 0
       name: "Drive Status Word"
       datatype: UINT16
+      unit: status
       initial_value: 7
 
     - address: 1
       name: "Fault Code"
       datatype: UINT16
+      unit: code
       initial_value: 0
 
     - address: 2
       name: "Warning Code"
       datatype: UINT16
+      unit: code
       initial_value: 0

@@ -1,0 +1,93 @@
+name: "Generic Lighting Controller"
+description: "4-zone lighting controller with occupancy and daylight sensing"
+device_id: 8001
+port: 47808
+
+objects:
+  # ── Zone dimming levels ──
+  - object_type: analog-output
+    instance: 1
+    name: "Zone 1 Light Level"
+    present_value: 80.0
+    units: percent
+    description: "Dimming command 0-100%"
+
+  - object_type: analog-output
+    instance: 2
+    name: "Zone 2 Light Level"
+    present_value: 90.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 3
+    name: "Zone 3 Light Level"
+    present_value: 50.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 4
+    name: "Zone 4 Light Level"
+    present_value: 0.0
+    units: percent
+
+  # ── Occupancy sensors ──
+  - object_type: binary-input
+    instance: 1
+    name: "Zone 1 Occupied"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 3600
+      off_duration: 1800
+
+  - object_type: binary-input
+    instance: 2
+    name: "Zone 2 Occupied"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 2400
+      off_duration: 1200
+
+  - object_type: binary-input
+    instance: 3
+    name: "Zone 3 Occupied"
+    present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 1800
+      off_duration: 2400
+
+  - object_type: binary-input
+    instance: 4
+    name: "Zone 4 Occupied"
+    present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 1200
+      off_duration: 3600
+
+  # ── Daylight ──
+  - object_type: analog-input
+    instance: 1
+    name: "Daylight Sensor"
+    present_value: 450.0
+    units: no-units
+    description: "Lux"
+    behavior:
+      type: sine_wave
+      center: 400.0
+      amplitude: 350.0
+      period: 86400
+
+  # ── Control ──
+  - object_type: multi-state-value
+    instance: 1
+    name: "Schedule Mode"
+    present_value: 2
+    description: "1=Off 2=Auto 3=Manual 4=Override"
+
+  - object_type: binary-value
+    instance: 1
+    name: "Override Active"
+    present_value: inactive

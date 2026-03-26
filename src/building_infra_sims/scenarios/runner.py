@@ -147,7 +147,14 @@ class ScenarioRunner:
         username: str | None = None,
         password: str | None = None,
     ) -> None:
-        """Register all simulated devices as connections in the gateway."""
+        """Register all simulated devices as connections in the gateway.
+
+        For BACnet devices: creates connections and triggers auto-discovery so the
+        gateway discovers all BACnet objects and begins polling.
+
+        For Modbus devices: creates connections and registers each individual point
+        (register) so the gateway knows which addresses to poll.
+        """
         from building_infra_sims.config import settings
         from building_infra_sims.skybox.client import SkyboxClient
         from building_infra_sims.skybox.models import (
@@ -155,7 +162,31 @@ class ScenarioRunner:
             ConnectionCreate,
             ConnectionType,
             ModbusConnectionConfig,
+            ModbusPointCreate,
+            PointDataType,
+            RegisterType,
         )
+
+        # Map sim register type strings to gateway API enums
+        register_type_map = {
+            "holding": RegisterType.HOLDING_REGISTER,
+            "input": RegisterType.INPUT_REGISTER,
+            "coil": RegisterType.COIL,
+            "discrete_input": RegisterType.DISCRETE_INPUT,
+        }
+
+        # Map sim datatype strings to gateway API enums
+        datatype_map = {
+            "FLOAT32": PointDataType.FLOAT32,
+            "FLOAT64": PointDataType.FLOAT64,
+            "INT16": PointDataType.INT16,
+            "UINT16": PointDataType.UINT16,
+            "INT32": PointDataType.INT32,
+            "UINT32": PointDataType.UINT32,
+            "INT64": PointDataType.INT64,
+            "UINT64": PointDataType.UINT64,
+            "BOOL": PointDataType.BOOL,
+        }
 
         url = base_url or settings.skybox_base_url
         user = username or settings.skybox_username
@@ -172,8 +203,11 @@ class ScenarioRunner:
             existing = await sb.list_connections()
             existing_names = {c.name for c in existing.items}
 
-            created = 0
+            created_conns = 0
+            created_points = 0
+            discovered_objects = 0
 
+            # ── BACnet devices ──
             for sim in self._bacnet_sims:
                 conn_name = f"Sim: {sim.device_name}"
                 if conn_name in existing_names:
@@ -181,7 +215,7 @@ class ScenarioRunner:
                     continue
 
                 ip = sim.ip_address or self._local_ip
-                await sb.create_connection(
+                conn = await sb.create_connection(
                     ConnectionCreate(
                         name=conn_name,
                         description=f"Simulated BACnet device (scenario: {self.name})",
@@ -195,9 +229,25 @@ class ScenarioRunner:
                         ),
                     )
                 )
-                logger.info(f"Registered BACnet device '{sim.device_name}' with gateway")
-                created += 1
+                created_conns += 1
+                logger.info(f"Created BACnet connection '{conn_name}'")
 
+                # Trigger auto-discovery to find all BACnet objects
+                if conn.id:
+                    await asyncio.sleep(2)  # let gateway establish connection
+                    try:
+                        result = await sb.save_bacnet_objects(conn.id, auto_add=True)
+                        discovered_objects += result.objects_added
+                        logger.info(
+                            f"BACnet discovery for '{sim.device_name}': "
+                            f"found {result.objects_discovered}, added {result.objects_added}"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"BACnet discovery failed for '{sim.device_name}': {e}"
+                        )
+
+            # ── Modbus devices ──
             for sim in self._modbus_sims:
                 conn_name = f"Sim: {sim.device_name}"
                 if conn_name in existing_names:
@@ -205,7 +255,7 @@ class ScenarioRunner:
                     continue
 
                 ip = self._local_ip or "127.0.0.1"
-                await sb.create_connection(
+                conn = await sb.create_connection(
                     ConnectionCreate(
                         name=conn_name,
                         description=f"Simulated Modbus device (scenario: {self.name})",
@@ -218,12 +268,47 @@ class ScenarioRunner:
                         ),
                     )
                 )
-                logger.info(f"Registered Modbus device '{sim.device_name}' with gateway")
-                created += 1
+                created_conns += 1
+                logger.info(f"Created Modbus connection '{conn_name}'")
+
+                # Register individual Modbus points
+                if conn.id:
+                    await asyncio.sleep(1)  # let gateway establish connection
+                    for reg in sim._registers:
+                        try:
+                            await sb.add_modbus_point(
+                                conn.id,
+                                ModbusPointCreate(
+                                    point_name=reg.name,
+                                    address=reg.address,
+                                    format=datatype_map.get(
+                                        reg.datatype, PointDataType.UINT16
+                                    ),
+                                    count=reg.count,
+                                    unit=reg.unit,
+                                    register_type=register_type_map.get(
+                                        reg.register_type,
+                                        RegisterType.HOLDING_REGISTER,
+                                    ),
+                                ),
+                            )
+                            created_points += 1
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to add point '{reg.name}' for "
+                                f"'{sim.device_name}': {e}"
+                            )
+
+                    logger.info(
+                        f"Registered {created_points} Modbus points for "
+                        f"'{sim.device_name}'"
+                    )
 
             console.print(
-                f"[bold green]Registered {created} new connections with gateway[/bold green] "
-                f"({len(existing_names)} already existed)"
+                f"[bold green]Gateway registration complete:[/bold green] "
+                f"{created_conns} connections, {created_points} Modbus points, "
+                f"{discovered_objects} BACnet objects discovered "
+                f"({len(existing_names)} connections already existed)"
             )
 
     async def unregister_from_skybox(

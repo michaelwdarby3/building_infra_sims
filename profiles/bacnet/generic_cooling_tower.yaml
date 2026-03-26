@@ -1,0 +1,121 @@
+name: "Generic Cooling Tower"
+description: "Induced-draft cooling tower with fan, basin, and water quality monitoring"
+device_id: 7001
+port: 47808
+
+objects:
+  # ── Temperatures ──
+  - object_type: analog-input
+    instance: 1
+    name: "Basin Water Temp"
+    present_value: 82.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 82.0
+      step_size: 0.5
+      min: 75.0
+      max: 90.0
+
+  - object_type: analog-input
+    instance: 2
+    name: "Approach Temp"
+    present_value: 7.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 7.0
+      step_size: 0.3
+      min: 4.0
+      max: 12.0
+
+  - object_type: analog-input
+    instance: 3
+    name: "Wet Bulb Temp"
+    present_value: 75.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 75.0
+      amplitude: 5.0
+      period: 86400
+
+  # ── Water quality ──
+  - object_type: analog-input
+    instance: 10
+    name: "Conductivity"
+    present_value: 1200.0
+    units: no-units
+    description: "Microsiemens/cm"
+    behavior:
+      type: random_walk
+      center: 1200.0
+      step_size: 20.0
+      min: 800.0
+      max: 2000.0
+
+  - object_type: analog-input
+    instance: 11
+    name: "pH Level"
+    present_value: 7.2
+    units: no-units
+    behavior:
+      type: random_walk
+      center: 7.2
+      step_size: 0.05
+      min: 6.5
+      max: 8.5
+
+  - object_type: analog-input
+    instance: 12
+    name: "Vibration Level"
+    present_value: 0.15
+    units: no-units
+    description: "Inches per second"
+    behavior:
+      type: random_walk
+      center: 0.15
+      step_size: 0.02
+      min: 0.05
+      max: 0.40
+
+  # ── Fan control ──
+  - object_type: analog-output
+    instance: 1
+    name: "Fan Speed Cmd"
+    present_value: 75.0
+    units: percent
+    description: "VFD speed command"
+
+  - object_type: binary-output
+    instance: 1
+    name: "Makeup Valve Cmd"
+    present_value: active
+    description: "Basin fill valve"
+
+  - object_type: binary-output
+    instance: 2
+    name: "Blowdown Valve Cmd"
+    present_value: inactive
+    description: "Water quality blowdown"
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Fan Running"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 1800
+      off_duration: 300
+
+  - object_type: binary-input
+    instance: 2
+    name: "Low Water Level"
+    present_value: inactive
+
+  - object_type: multi-state-value
+    instance: 1
+    name: "Operating Mode"
+    present_value: 2
+    description: "1=Off 2=Running 3=Winterized 4=Alarm"

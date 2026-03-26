@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Telemetry History{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+{% endblock %}
+
+{% block content %}
+<h2>Telemetry History</h2>
+<p>Recent sensor readings from the gateway database.</p>
+
+<div>
+    <label for="point-filter">Filter by point name:</label>
+    <input type="text" id="point-filter" placeholder="Type to filter...">
+</div>
+
+<canvas id="historyChart" style="max-height: 400px;"></canvas>
+
+<details>
+    <summary>Raw data table</summary>
+    <div id="history-table"></div>
+</details>
+
+<script>
+let chart = null;
+
+async function loadHistory() {
+    const resp = await fetch('/api/telemetry/history');
+    const data = await resp.json();
+    const rows = data.rows;
+
+    if (!rows || rows.length === 0) {
+        document.getElementById('history-table').innerHTML = '<p><em>No historical data yet.</em></p>';
+        return;
+    }
+
+    const series = {};
+    const columns = Object.keys(rows[0]);
+    const timeCol = columns.find(c => c.toLowerCase().includes('time') || c.toLowerCase().includes('timestamp')) || columns[0];
+    const valueCol = columns.find(c => c.toLowerCase().includes('value') || c.toLowerCase().includes('data')) || columns[1];
+    const nameCol = columns.find(c => c.toLowerCase().includes('name') || c.toLowerCase().includes('id') || c.toLowerCase().includes('point')) || columns[2];
+
+    for (const row of rows) {
+        const name = String(row[nameCol] || 'unknown');
+        if (!series[name]) series[name] = [];
+        series[name].push({ x: row[timeCol], y: parseFloat(row[valueCol]) || 0 });
+    }
+
+    const colors = [
+        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+        '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
+    ];
+
+    const datasets = Object.entries(series).map(([name, points], i) => ({
+        label: name,
+        data: points.reverse(),
+        borderColor: colors[i % colors.length],
+        backgroundColor: colors[i % colors.length] + '22',
+        borderWidth: 1.5, pointRadius: 0, tension: 0.3,
+    }));
+
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true,
+            interaction: { intersect: false, mode: 'index' },
+            scales: {
+                x: { type: 'linear', title: { display: true, text: 'Time' } },
+                y: { title: { display: true, text: 'Value' } },
+            },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+        },
+    });
+
+    let html = '<table><thead><tr>';
+    for (const col of columns) html += '<th>' + col + '</th>';
+    html += '</tr></thead><tbody>';
+    for (const row of rows.slice(0, 100)) {
+        html += '<tr>';
+        for (const col of columns) html += '<td>' + (row[col] ?? '') + '</td>';
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    if (rows.length > 100) html += '<p><em>Showing 100 of ' + rows.length + ' rows</em></p>';
+    document.getElementById('history-table').innerHTML = html;
+}
+
+document.getElementById('point-filter').addEventListener('input', function() {
+    if (!chart) return;
+    const filter = this.value.toLowerCase();
+    chart.data.datasets.forEach(ds => { ds.hidden = filter && !ds.label.toLowerCase().includes(filter); });
+    chart.update();
+});
+
+loadHistory();
+</script>
+{% endblock %}

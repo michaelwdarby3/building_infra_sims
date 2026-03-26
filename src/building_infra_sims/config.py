@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "BSIM_"}
+    model_config = {"env_prefix": "BSIM_", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     # Gateway connection
     skybox_host: str = "10.0.0.35"

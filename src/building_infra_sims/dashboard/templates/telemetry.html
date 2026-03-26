@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Live Telemetry{% endblock %}
+
+{% block content %}
+<h2>Live Telemetry
+    <span class="htmx-indicator" aria-busy="true" style="font-size: 0.9rem; margin-left: 0.5rem;">updating...</span>
+</h2>
+<p>{{ telemetry.total_points }} data points from gateway
+    <small>(auto-refreshes every 10s)</small>
+</p>
+
+<div id="telemetry-table"
+     hx-get="/api/telemetry"
+     hx-trigger="every 10s"
+     hx-swap="innerHTML"
+     hx-indicator=".htmx-indicator">
+    {% include "partials/telemetry_table.html" with context %}
+</div>
+{% endblock %}

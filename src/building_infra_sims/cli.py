@@ -132,6 +132,57 @@ def run_scenario(
     _run(scenario, setup_skybox=setup_skybox)
 
 
+@app.command("verify")
+def verify_scenario(
+    scenario: str = typer.Argument(..., help="Path to scenario YAML file"),
+    settle_time: int = typer.Option(
+        30, "--settle-time", help="Seconds to wait for gateway polling before checking"
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Keep simulators running after verification"
+    ),
+):
+    """Run a scenario and verify data flows through the gateway end-to-end."""
+    import asyncio
+
+    from building_infra_sims.scenarios.runner import ScenarioRunner
+    from building_infra_sims.scenarios.verify import E2EVerifier
+
+    async def _verify():
+        runner = ScenarioRunner(scenario)
+        await runner.start()
+        await runner.register_with_skybox()
+
+        verifier = E2EVerifier(settle_time=settle_time)
+        passed = await verifier.verify(runner)
+
+        if keep:
+            console.print("[bold]Simulators still running. Press Ctrl+C to stop.[/bold]")
+            import signal
+
+            stop_event = asyncio.Event()
+            loop = asyncio.get_event_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, stop_event.set)
+            await stop_event.wait()
+
+        await runner.stop()
+
+        if not keep:
+            await runner.unregister_from_skybox()
+
+        raise SystemExit(0 if passed else 1)
+
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    console.print(f"[bold]Verifying scenario:[/bold] {scenario}")
+    asyncio.run(_verify())
+
+
 @app.command("teardown-skybox")
 def teardown_skybox():
     """Remove all simulated device connections from the gateway."""
@@ -148,6 +199,56 @@ def teardown_skybox():
         await runner.unregister_from_skybox()
 
     asyncio.run(_teardown())
+
+
+@app.command("dashboard")
+def dashboard(
+    scenario: str = typer.Argument(None, help="Optional scenario YAML to pre-load"),
+    host: str = typer.Option("0.0.0.0", help="Dashboard bind address"),
+    port: int = typer.Option(8080, help="Dashboard port"),
+    setup_skybox: bool = typer.Option(
+        False, "--setup-skybox", help="Auto-register pre-loaded devices with the gateway"
+    ),
+):
+    """Launch the web control panel. Optionally pre-load a scenario."""
+    import asyncio
+
+    import uvicorn
+
+    from building_infra_sims.dashboard.app import create_app
+
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    web_app = create_app()
+
+    # Pre-load a scenario if provided
+    if scenario:
+        async def _preload():
+            state = web_app.state.dashboard
+            await state.load_scenario(scenario)
+            if setup_skybox:
+                await state.register_all()
+
+        asyncio.run(_preload())
+        console.print(f"[bold]Pre-loaded scenario:[/bold] {scenario}")
+
+    console.print(
+        f"\n[bold green]Dashboard running at http://{host}:{port}[/bold green]"
+        f"\n[bold]Press Ctrl+C to stop.[/bold]\n"
+    )
+
+    config = uvicorn.Config(web_app, host=host, port=port, log_level="info")
+    server = uvicorn.Server(config)
+
+    try:
+        server.run()
+    except KeyboardInterrupt:
+        pass
 
 
 @app.command("list-scenarios")

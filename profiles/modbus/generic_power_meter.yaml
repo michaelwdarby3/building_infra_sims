@@ -8,6 +8,7 @@ registers:
     - address: 0
       name: "Voltage Phase A"
       datatype: FLOAT32
+      unit: V
       initial_value: 120.1
       behavior:
         type: random_walk
@@ -19,6 +20,7 @@ registers:
     - address: 2
       name: "Voltage Phase B"
       datatype: FLOAT32
+      unit: V
       initial_value: 120.0
       behavior:
         type: random_walk
@@ -30,6 +32,7 @@ registers:
     - address: 4
       name: "Voltage Phase C"
       datatype: FLOAT32
+      unit: V
       initial_value: 119.9
       behavior:
         type: random_walk
@@ -41,6 +44,7 @@ registers:
     - address: 6
       name: "Current Phase A"
       datatype: FLOAT32
+      unit: A
       initial_value: 15.2
       behavior:
         type: sine_wave
@@ -51,6 +55,7 @@ registers:
     - address: 8
       name: "Current Phase B"
       datatype: FLOAT32
+      unit: A
       initial_value: 14.8
       behavior:
         type: sine_wave
@@ -61,6 +66,7 @@ registers:
     - address: 10
       name: "Current Phase C"
       datatype: FLOAT32
+      unit: A
       initial_value: 15.0
       behavior:
         type: sine_wave
@@ -71,6 +77,7 @@ registers:
     - address: 20
       name: "Power Factor"
       datatype: FLOAT32
+      unit: PF
       initial_value: 0.95
       behavior:
         type: random_walk
@@ -82,6 +89,7 @@ registers:
     - address: 22
       name: "Frequency"
       datatype: FLOAT32
+      unit: Hz
       initial_value: 60.0
       behavior:
         type: random_walk
@@ -93,6 +101,7 @@ registers:
     - address: 40
       name: "Total kW"
       datatype: FLOAT32
+      unit: kW
       initial_value: 5.4
       behavior:
         type: sine_wave
@@ -103,6 +112,7 @@ registers:
     - address: 42
       name: "Total kVAR"
       datatype: FLOAT32
+      unit: kVAR
       initial_value: 1.2
       behavior:
         type: sine_wave
@@ -113,6 +123,7 @@ registers:
     - address: 50
       name: "Total kWh"
       datatype: FLOAT32
+      unit: kWh
       initial_value: 123456.0
       behavior:
         type: accumulator
@@ -123,9 +134,11 @@ registers:
     - address: 0
       name: "Device Status"
       datatype: UINT16
+      unit: status
       initial_value: 1
 
     - address: 1
       name: "Error Code"
       datatype: UINT16
+      unit: code
       initial_value: 0

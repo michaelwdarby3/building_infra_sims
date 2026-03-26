@@ -44,9 +44,11 @@ UNIT_MAP = {
     "cubic-feet-per-minute": "cubicFeetPerMinute",
     "inches-of-water": "inchesOfWater",
     "psi": "poundsForcePerSquareInch",
+    "pounds-per-square-inch": "poundsForcePerSquareInch",
     "gallons-per-minute": "usGallonsPerMinute",
     "rpm": "revolutionsPerMinute",
     "hertz": "hertz",
+    "kilovolt-amperes-reactive": "kilovoltAmperesReactive",
     "no-units": "noUnits",
 }
 

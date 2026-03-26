@@ -1,0 +1,83 @@
+name: "Medium Office Building"
+description: "2 AHUs, 8 VAVs, 1 boiler, 1 chiller, 2 power meters + 7 Modbus devices (~21 total)"
+
+bacnet_devices:
+  # ── AHUs ──
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1001
+
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1002
+
+  # ── VAVs (floors 1-4, 2 per floor) ──
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2001
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2002
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2003
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2004
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2005
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2006
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2007
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2008
+
+  # ── Plant ──
+  - profile: profiles/bacnet/generic_boiler.yaml
+    device_id: 4001
+
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5001
+
+  # ── BACnet meters ──
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3001
+
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3002
+
+modbus_devices:
+  # ── VFDs (AHU supply fans) ──
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10503
+    unit_id: 1
+
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10504
+    unit_id: 1
+
+  # ── Sensor racks ──
+  - profile: profiles/modbus/generic_sensor_rack.yaml
+    port: 10505
+    unit_id: 1
+
+  - profile: profiles/modbus/generic_sensor_rack.yaml
+    port: 10506
+    unit_id: 1
+
+  # ── HVAC controller ──
+  - profile: profiles/modbus/generic_hvac_controller.yaml
+    port: 10510
+    unit_id: 1
+
+  # ── Energy meter ──
+  - profile: profiles/modbus/generic_energy_meter_demand.yaml
+    port: 10511
+    unit_id: 1
+
+  # ── Weather station ──
+  - profile: profiles/modbus/generic_weather_station.yaml
+    port: 10512
+    unit_id: 1

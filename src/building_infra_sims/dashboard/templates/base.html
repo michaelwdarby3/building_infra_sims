@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Building Sim{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        :root { --pico-font-size: 15px; }
+        nav { margin-bottom: 1rem; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+        }
+        .stat-card .value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        .stat-card .label {
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-bacnet { background: #e0f2fe; color: #0369a1; }
+        .badge-modbus { background: #fef3c7; color: #92400e; }
+        .badge-running { background: #dcfce7; color: #166534; }
+        .badge-stopped { background: #f3f4f6; color: #6b7280; }
+        .badge-error { background: #fecaca; color: #7f1d1d; }
+        .badge-active { background: #dcfce7; color: #166534; }
+        .badge-inactive { background: #fee2e2; color: #991b1b; }
+        .badge-unknown { background: #f3f4f6; color: #6b7280; }
+        .badge-yes { background: #dcfce7; color: #166534; }
+        .badge-no { background: #f3f4f6; color: #6b7280; }
+        table { font-size: 0.9rem; }
+        .actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .actions form { margin: 0; }
+        .actions button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        .btn-danger { --pico-background-color: #dc2626; --pico-border-color: #dc2626; }
+        .btn-secondary { --pico-background-color: #6b7280; --pico-border-color: #6b7280; }
+        .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+        .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+        details[open] summary { margin-bottom: 0.5rem; }
+        .panel { margin-bottom: 1.5rem; }
+        fieldset { margin-bottom: 0; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>Building Sim</strong></li>
+        </ul>
+        <ul>
+            <li><a href="/">Overview</a></li>
+            <li><a href="/devices">Devices</a></li>
+            <li><a href="/telemetry">Telemetry</a></li>
+            <li><a href="/telemetry/history">History</a></li>
+            <li><a href="/connections">Connections</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

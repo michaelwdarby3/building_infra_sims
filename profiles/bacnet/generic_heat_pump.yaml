@@ -1,0 +1,121 @@
+name: "Generic Heat Pump"
+description: "Air/water source heat pump with reversible operation"
+device_id: 7101
+port: 47808
+
+objects:
+  # ── Source side ──
+  - object_type: analog-input
+    instance: 1
+    name: "Source Entering Temp"
+    present_value: 50.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 50.0
+      amplitude: 15.0
+      period: 86400
+
+  - object_type: analog-input
+    instance: 2
+    name: "Source Leaving Temp"
+    present_value: 42.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 42.0
+      amplitude: 12.0
+      period: 86400
+
+  # ── Load side ──
+  - object_type: analog-input
+    instance: 3
+    name: "Load Entering Temp"
+    present_value: 95.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 95.0
+      step_size: 1.0
+      min: 85.0
+      max: 110.0
+
+  - object_type: analog-input
+    instance: 4
+    name: "Load Leaving Temp"
+    present_value: 110.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 110.0
+      step_size: 1.0
+      min: 100.0
+      max: 120.0
+
+  # ── Performance ──
+  - object_type: analog-value
+    instance: 1
+    name: "COP"
+    present_value: 3.5
+    units: no-units
+    behavior:
+      type: random_walk
+      center: 3.5
+      step_size: 0.1
+      min: 2.5
+      max: 5.0
+
+  - object_type: analog-value
+    instance: 2
+    name: "Setpoint"
+    present_value: 110.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 3
+    name: "Runtime Hours"
+    present_value: 8500.0
+    units: no-units
+    behavior:
+      type: accumulator
+      initial: 8500.0
+      rate_per_second: 0.000278
+
+  - object_type: analog-input
+    instance: 10
+    name: "Compressor Power"
+    present_value: 12.5
+    units: kilowatts
+    behavior:
+      type: sine_wave
+      center: 12.0
+      amplitude: 5.0
+      period: 3600
+
+  # ── Status/Control ──
+  - object_type: binary-input
+    instance: 1
+    name: "Compressor Running"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 2400
+      off_duration: 600
+
+  - object_type: binary-value
+    instance: 1
+    name: "Reversing Valve"
+    present_value: active
+    description: "active=Heating inactive=Cooling"
+
+  - object_type: multi-state-value
+    instance: 1
+    name: "Defrost Mode"
+    present_value: 1
+    description: "1=Normal 2=Defrost 3=Recovery"
+
+  - object_type: multi-state-value
+    instance: 2
+    name: "Operating Mode"
+    present_value: 2
+    description: "1=Off 2=Heating 3=Cooling 4=Standby 5=Lockout"

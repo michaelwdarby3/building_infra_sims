@@ -55,6 +55,7 @@ def create_simulator_from_profile(
                 initial_value=reg_cfg.get("initial_value", 0),
                 behavior=behavior,
                 register_type=reg_type,
+                unit=reg_cfg.get("unit", "noUnits"),
             )
 
     logger.info(f"Loaded Modbus profile '{profile['name']}' with {len(sim._registers)} registers")

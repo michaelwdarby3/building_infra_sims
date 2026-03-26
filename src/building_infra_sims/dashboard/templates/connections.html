@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Gateway Connections{% endblock %}
+
+{% block content %}
+<h2>Gateway Connections</h2>
+<p>{{ connections | length }} connections configured in gateway.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Enabled</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in connections %}
+        <tr>
+            <td><code>{{ c.id or "-" }}</code></td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.type }}</td>
+            <td>
+                {% if c.enabled %}
+                    <span class="badge badge-active">Yes</span>
+                {% else %}
+                    <span class="badge badge-inactive">No</span>
+                {% endif %}
+            </td>
+            <td><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

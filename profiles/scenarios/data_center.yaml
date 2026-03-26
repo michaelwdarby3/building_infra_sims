@@ -1,0 +1,112 @@
+name: "Data Center"
+description: "6 chillers, 4 cooling towers, 8 CRAHs, 4 meters + 16 Modbus devices (~38 total)"
+
+bacnet_devices:
+  # ── Chillers (6x redundant) ──
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5001
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5002
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5003
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5004
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5005
+  - profile: profiles/bacnet/generic_chiller.yaml
+    device_id: 5006
+
+  # ── Cooling towers (4x) ──
+  - profile: profiles/bacnet/generic_cooling_tower.yaml
+    device_id: 7001
+  - profile: profiles/bacnet/generic_cooling_tower.yaml
+    device_id: 7002
+  - profile: profiles/bacnet/generic_cooling_tower.yaml
+    device_id: 7003
+  - profile: profiles/bacnet/generic_cooling_tower.yaml
+    device_id: 7004
+
+  # ── CRAHs (8x, using AHU profiles) ──
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1001
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1002
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1003
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1004
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1005
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1006
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1007
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1008
+
+  # ── Power meters (4x for redundant feeds) ──
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3001
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3002
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3003
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3004
+
+modbus_devices:
+  # ── VFDs (chiller/tower pumps and fans) ──
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10503
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10504
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10505
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10506
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10507
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10508
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10509
+    unit_id: 1
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10510
+    unit_id: 1
+
+  # ── Energy meters (demand) ──
+  - profile: profiles/modbus/generic_energy_meter_demand.yaml
+    port: 10520
+    unit_id: 1
+  - profile: profiles/modbus/generic_energy_meter_demand.yaml
+    port: 10521
+    unit_id: 1
+  - profile: profiles/modbus/generic_energy_meter_demand.yaml
+    port: 10522
+    unit_id: 1
+  - profile: profiles/modbus/generic_energy_meter_demand.yaml
+    port: 10523
+    unit_id: 1
+
+  # ── Sensor racks ──
+  - profile: profiles/modbus/generic_sensor_rack.yaml
+    port: 10530
+    unit_id: 1
+  - profile: profiles/modbus/generic_sensor_rack.yaml
+    port: 10531
+    unit_id: 1
+
+  # ── HVAC controllers ──
+  - profile: profiles/modbus/generic_hvac_controller.yaml
+    port: 10540
+    unit_id: 1
+  - profile: profiles/modbus/generic_hvac_controller.yaml
+    port: 10541
+    unit_id: 1

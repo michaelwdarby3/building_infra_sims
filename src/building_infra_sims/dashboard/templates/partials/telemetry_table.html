@@ -1,0 +1,36 @@
+{% set data_points = data_points if data_points is defined else telemetry.data_points if telemetry is defined else [] %}
+
+{% if data_points %}
+<table>
+    <thead>
+        <tr>
+            <th>Point ID</th>
+            <th>Value</th>
+            <th>Units</th>
+            <th>Type</th>
+            <th>Zone</th>
+            <th>Room</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dp in data_points %}
+        <tr>
+            <td><code>{{ dp.id }}</code></td>
+            <td>
+                {% if dp.data is number %}
+                    {{ "%.2f" | format(dp.data) if dp.data is not none else "-" }}
+                {% else %}
+                    {{ dp.data if dp.data is not none else "-" }}
+                {% endif %}
+            </td>
+            <td>{{ dp.units }}</td>
+            <td>{{ dp.type }}</td>
+            <td>{{ dp.zone }}</td>
+            <td>{{ dp.room }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No telemetry data available yet. The gateway may still be polling.</em></p>
+{% endif %}
