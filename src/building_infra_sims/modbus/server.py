@@ -229,6 +229,32 @@ class ModbusDeviceSimulator:
         for i, v in enumerate(packed):
             device_ctx.setValues(3, address + i, [v])  # 3 = holding registers
 
+    def get_register_values(self) -> list[dict]:
+        """Read current values from all registers."""
+        if not self._context:
+            return []
+        results = []
+        device_ctx = self._context[self.unit_id]
+        for reg in self._registers:
+            try:
+                fx = 3 if reg.register_type == "holding" else 4
+                raw = device_ctx.getValues(fx, reg.address, reg.count)
+                value = unpack_value(raw, reg.datatype)
+                results.append({
+                    "name": reg.name,
+                    "value": value,
+                    "units": reg.unit,
+                    "datatype": reg.datatype,
+                })
+            except Exception:
+                results.append({
+                    "name": reg.name,
+                    "value": None,
+                    "units": reg.unit,
+                    "datatype": reg.datatype,
+                })
+        return results
+
     async def _run_behaviors(self, interval: float = 5.0) -> None:
         """Periodically update register values based on their behaviors."""
         while True:

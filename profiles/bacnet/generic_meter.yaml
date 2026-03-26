@@ -42,17 +42,18 @@ objects:
       min: 118.0
       max: 122.0
 
-  # ── Current ──
+  # ── Current (120° phase offsets for realistic 3-phase) ──
   - object_type: analog-input
     instance: 4
     name: "Current Phase A"
     present_value: 15.0
     units: amperes
     behavior:
-      type: sine_wave
+      type: phased_sine_wave
       center: 15.0
       amplitude: 5.0
       period: 1800
+      phase_offset: 0.0
 
   - object_type: analog-input
     instance: 5
@@ -60,10 +61,11 @@ objects:
     present_value: 14.8
     units: amperes
     behavior:
-      type: sine_wave
+      type: phased_sine_wave
       center: 15.0
       amplitude: 5.0
       period: 1800
+      phase_offset: 2.094
 
   - object_type: analog-input
     instance: 6
@@ -71,10 +73,11 @@ objects:
     present_value: 15.1
     units: amperes
     behavior:
-      type: sine_wave
+      type: phased_sine_wave
       center: 15.0
       amplitude: 5.0
       period: 1800
+      phase_offset: 4.189
 
   # ── Power ──
   - object_type: analog-input

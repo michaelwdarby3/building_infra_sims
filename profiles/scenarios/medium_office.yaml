@@ -1,5 +1,5 @@
 name: "Medium Office Building"
-description: "2 AHUs, 8 VAVs, 1 boiler, 1 chiller, 2 power meters + 7 Modbus devices (~21 total)"
+description: "2 AHUs, 8 VAVs, 2 FCUs, 1 boiler, 1 chiller, 1 DHW, 2 meters + 10 Modbus devices (~26 total)"
 
 bacnet_devices:
   # ── AHUs ──
@@ -41,6 +41,17 @@ bacnet_devices:
   - profile: profiles/bacnet/generic_chiller.yaml
     device_id: 5001
 
+  # ── FCUs (lobby, conference room) ──
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 6101
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 6102
+
+  # ── DHW ──
+  - profile: profiles/bacnet/generic_dhw.yaml
+    device_id: 6201
+
   # ── BACnet meters ──
   - profile: profiles/bacnet/generic_meter.yaml
     device_id: 3001
@@ -80,4 +91,19 @@ modbus_devices:
   # ── Weather station ──
   - profile: profiles/modbus/generic_weather_station.yaml
     port: 10512
+    unit_id: 1
+
+  # ── Pump (CHW) ──
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10522
+    unit_id: 1
+
+  # ── Exhaust fan ──
+  - profile: profiles/modbus/generic_exhaust_fan.yaml
+    port: 10520
+    unit_id: 1
+
+  # ── Power meter (Modbus) ──
+  - profile: profiles/modbus/generic_power_meter.yaml
+    port: 10502
     unit_id: 1

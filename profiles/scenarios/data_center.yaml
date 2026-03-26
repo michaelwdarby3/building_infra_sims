@@ -1,5 +1,5 @@
 name: "Data Center"
-description: "6 chillers, 4 cooling towers, 8 CRAHs, 4 meters + 16 Modbus devices (~38 total)"
+description: "6 chillers, 4 cooling towers, 8 CRAHs, 4 meters + 20 Modbus devices (~42 total)"
 
 bacnet_devices:
   # ── Chillers (6x redundant) ──
@@ -109,4 +109,18 @@ modbus_devices:
     unit_id: 1
   - profile: profiles/modbus/generic_hvac_controller.yaml
     port: 10541
+    unit_id: 1
+
+  # ── Pumps (CHW primary, CHW secondary, CW primary, CW secondary) ──
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10550
+    unit_id: 1
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10551
+    unit_id: 1
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10552
+    unit_id: 1
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10553
     unit_id: 1

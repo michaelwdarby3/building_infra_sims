@@ -103,10 +103,8 @@ registers:
       unit: degF
       initial_value: 60.0
       behavior:
-        type: sine_wave
-        center: 58.0
-        amplitude: 8.0
-        period: 86400
+        type: dew_point
+        sources: ["Outdoor Temperature", "Outdoor Humidity"]
 
     - address: 18
       name: "Wet Bulb Temp"
@@ -114,7 +112,5 @@ registers:
       unit: degF
       initial_value: 65.0
       behavior:
-        type: sine_wave
-        center: 64.0
-        amplitude: 8.0
-        period: 86400
+        type: wet_bulb
+        sources: ["Outdoor Temperature", "Outdoor Humidity"]

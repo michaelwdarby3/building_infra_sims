@@ -1,0 +1,150 @@
+name: "Generic Rooftop Unit"
+description: "Packaged rooftop unit with DX cooling, gas heat, and economizer"
+device_id: 6001
+port: 47808
+
+objects:
+  # ── Temperature sensors ──
+  - object_type: analog-input
+    instance: 1
+    name: "Supply Air Temp"
+    present_value: 55.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 55.0
+      amplitude: 3.0
+      period: 3600
+
+  - object_type: analog-input
+    instance: 2
+    name: "Return Air Temp"
+    present_value: 74.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 74.0
+      amplitude: 2.0
+      period: 7200
+
+  - object_type: analog-input
+    instance: 3
+    name: "Outside Air Temp"
+    present_value: 85.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 82.0
+      amplitude: 12.0
+      period: 86400
+
+  - object_type: analog-input
+    instance: 4
+    name: "Mixed Air Temp"
+    present_value: 68.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 68.0
+      amplitude: 5.0
+      period: 3600
+
+  - object_type: analog-input
+    instance: 5
+    name: "Discharge Air Temp"
+    present_value: 54.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 54.0
+      step_size: 0.5
+      min: 50.0
+      max: 58.0
+
+  # ── Commands ──
+  - object_type: analog-output
+    instance: 1
+    name: "Cooling Stage CMD"
+    present_value: 1.0
+    units: no-units
+
+  - object_type: analog-output
+    instance: 2
+    name: "Heating CMD"
+    present_value: 0.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 3
+    name: "OA Damper CMD"
+    present_value: 25.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 4
+    name: "Supply Fan Speed CMD"
+    present_value: 75.0
+    units: percent
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Supply Fan Status"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 1800
+      off_duration: 120
+
+  - object_type: binary-input
+    instance: 2
+    name: "Compressor 1 Status"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 900
+      off_duration: 300
+
+  - object_type: binary-input
+    instance: 3
+    name: "Compressor 2 Status"
+    present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 600
+      off_duration: 600
+
+  - object_type: binary-input
+    instance: 4
+    name: "Economizer Active"
+    present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 300
+      off_duration: 900
+
+  # ── Setpoints ──
+  - object_type: analog-value
+    instance: 1
+    name: "Cooling Setpoint"
+    present_value: 74.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 2
+    name: "Heating Setpoint"
+    present_value: 68.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 3
+    name: "Economizer Changeover Temp"
+    present_value: 65.0
+    units: degrees-fahrenheit
+
+  # ── Mode ──
+  - object_type: multi-state-value
+    instance: 1
+    name: "Operating Mode"
+    present_value: 3
+    description: "1=Off 2=Cool1 3=Cool2 4=Heat 5=Econ 6=Auto"

@@ -1,0 +1,127 @@
+name: "Generic Pump"
+description: "Variable speed centrifugal pump with pressure and flow monitoring"
+unit_id: 1
+port: 10522
+
+registers:
+  holding:
+    - address: 0
+      name: "Speed CMD"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 70.0
+      behavior:
+        type: sine_wave
+        center: 70.0
+        amplitude: 15.0
+        period: 3600
+
+    - address: 2
+      name: "Run CMD"
+      datatype: UINT16
+      unit: status
+      initial_value: 1
+
+    - address: 3
+      name: "Pressure Setpoint"
+      datatype: FLOAT32
+      unit: PSI
+      initial_value: 25.0
+
+  input:
+    - address: 0
+      name: "Status"
+      datatype: UINT16
+      unit: status
+      initial_value: 1
+
+    - address: 1
+      name: "Speed Feedback"
+      datatype: FLOAT32
+      unit: "%"
+      initial_value: 68.0
+      behavior:
+        type: sine_wave
+        center: 68.0
+        amplitude: 14.0
+        period: 3600
+
+    - address: 3
+      name: "Flow Rate"
+      datatype: FLOAT32
+      unit: GPM
+      initial_value: 120.0
+      behavior:
+        type: sine_wave
+        center: 120.0
+        amplitude: 40.0
+        period: 3600
+
+    - address: 5
+      name: "Differential Pressure"
+      datatype: FLOAT32
+      unit: PSI
+      initial_value: 25.0
+      behavior:
+        type: random_walk
+        center: 25.0
+        step_size: 0.5
+        min: 18.0
+        max: 32.0
+
+    - address: 7
+      name: "Suction Pressure"
+      datatype: FLOAT32
+      unit: PSI
+      initial_value: 12.0
+      behavior:
+        type: random_walk
+        center: 12.0
+        step_size: 0.3
+        min: 8.0
+        max: 16.0
+
+    - address: 9
+      name: "Discharge Pressure"
+      datatype: FLOAT32
+      unit: PSI
+      initial_value: 37.0
+      behavior:
+        type: random_walk
+        center: 37.0
+        step_size: 0.5
+        min: 28.0
+        max: 46.0
+
+    - address: 11
+      name: "Motor Current"
+      datatype: FLOAT32
+      unit: A
+      initial_value: 18.0
+      behavior:
+        type: sine_wave
+        center: 18.0
+        amplitude: 6.0
+        period: 3600
+
+    - address: 13
+      name: "Motor Temp"
+      datatype: FLOAT32
+      unit: degF
+      initial_value: 155.0
+      behavior:
+        type: random_walk
+        center: 155.0
+        step_size: 2.0
+        min: 120.0
+        max: 195.0
+
+    - address: 15
+      name: "Run Hours"
+      datatype: FLOAT32
+      unit: hours
+      initial_value: 12000.0
+      behavior:
+        type: accumulator
+        initial: 12000.0
+        rate_per_second: 0.000278

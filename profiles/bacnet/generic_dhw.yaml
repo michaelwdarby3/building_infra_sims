@@ -1,0 +1,136 @@
+name: "Generic Domestic Hot Water"
+description: "Domestic hot water system with storage tank, burner/element, and recirc pump"
+device_id: 6201
+port: 47808
+
+objects:
+  # ── Temperature sensors ──
+  - object_type: analog-input
+    instance: 1
+    name: "Tank Temp Upper"
+    present_value: 135.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 135.0
+      step_size: 1.0
+      min: 120.0
+      max: 145.0
+
+  - object_type: analog-input
+    instance: 2
+    name: "Tank Temp Lower"
+    present_value: 125.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 125.0
+      step_size: 1.5
+      min: 100.0
+      max: 140.0
+
+  - object_type: analog-input
+    instance: 3
+    name: "Supply Temp"
+    present_value: 130.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 130.0
+      step_size: 1.0
+      min: 115.0
+      max: 140.0
+
+  - object_type: analog-input
+    instance: 4
+    name: "Return Temp"
+    present_value: 110.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 110.0
+      step_size: 1.5
+      min: 90.0
+      max: 125.0
+
+  - object_type: analog-input
+    instance: 5
+    name: "Inlet Cold Water Temp"
+    present_value: 55.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 55.0
+      step_size: 0.5
+      min: 45.0
+      max: 65.0
+
+  - object_type: analog-input
+    instance: 6
+    name: "Flow Rate"
+    present_value: 5.0
+    units: gallons-per-minute
+    behavior:
+      type: random_walk
+      center: 5.0
+      step_size: 1.0
+      min: 0.0
+      max: 15.0
+
+  # ── Commands ──
+  - object_type: analog-output
+    instance: 1
+    name: "Burner CMD"
+    present_value: 50.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 2
+    name: "Recirc Pump CMD"
+    present_value: 100.0
+    units: percent
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Burner Status"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 900
+      off_duration: 300
+
+  - object_type: binary-input
+    instance: 2
+    name: "Recirc Pump Status"
+    present_value: active
+
+  - object_type: binary-input
+    instance: 3
+    name: "High Limit Alarm"
+    present_value: inactive
+
+  - object_type: binary-input
+    instance: 4
+    name: "Low Temp Alarm"
+    present_value: inactive
+
+  # ── Setpoints ──
+  - object_type: analog-value
+    instance: 1
+    name: "Setpoint"
+    present_value: 130.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 2
+    name: "High Limit"
+    present_value: 160.0
+    units: degrees-fahrenheit
+
+  # ── Mode ──
+  - object_type: multi-state-value
+    instance: 1
+    name: "Operating Mode"
+    present_value: 3
+    description: "1=Off 2=Standby 3=Heating 4=Maintaining"

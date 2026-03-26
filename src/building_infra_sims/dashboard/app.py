@@ -10,8 +10,10 @@ from building_infra_sims.dashboard.state import DashboardState
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await app.state.dashboard.start_recording()
     yield
-    # Stop all simulators on shutdown
+    await app.state.dashboard.stop_recording()
+    await app.state.dashboard.unregister_all()
     await app.state.dashboard.stop_all()
 
 

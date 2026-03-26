@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from building_infra_sims.behaviors import create_behavior
+from building_infra_sims.behaviors.base import _DeferredBehavior, resolve_deferred
 from building_infra_sims.modbus.server import ModbusDeviceSimulator
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ def create_simulator_from_profile(
 
     registers = profile.get("registers", {})
 
+    # First pass: create all behaviors (some may be deferred)
     for reg_type, reg_list in registers.items():
         for reg_cfg in reg_list:
             behavior = None
@@ -57,6 +59,16 @@ def create_simulator_from_profile(
                 register_type=reg_type,
                 unit=reg_cfg.get("unit", "noUnits"),
             )
+
+    # Second pass: resolve deferred behaviors (dew_point, wet_bulb, deadband_switch)
+    behaviors_by_name = {
+        reg.name: reg.behavior
+        for reg in sim._registers
+        if reg.behavior is not None
+    }
+    for reg in sim._registers:
+        if isinstance(reg.behavior, _DeferredBehavior):
+            reg.behavior = resolve_deferred(reg.behavior, behaviors_by_name)
 
     logger.info(f"Loaded Modbus profile '{profile['name']}' with {len(sim._registers)} registers")
     return sim

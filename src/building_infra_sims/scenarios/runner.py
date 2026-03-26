@@ -351,6 +351,14 @@ class ScenarioRunner:
 
         console.print("\n[bold]All devices running. Press Ctrl+C to stop.[/bold]\n")
         await stop_event.wait()
+
+        if setup_skybox:
+            console.print("[bold]Cleaning up gateway registrations...[/bold]")
+            try:
+                await self.unregister_from_skybox()
+            except Exception as e:
+                logger.warning(f"Failed to clean up gateway registrations: {e}")
+
         await self.stop()
 
 

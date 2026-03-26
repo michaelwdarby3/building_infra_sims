@@ -1,0 +1,40 @@
+{% if devices %}
+{% for device_name, points in devices.items() %}
+<details open>
+    <summary>
+        <strong>{{ device_name }}</strong>
+        <small>({{ points | length }} points)</small>
+    </summary>
+    <table>
+        <thead>
+            <tr>
+                <th>Point</th>
+                <th>Value</th>
+                <th>Units</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in points %}
+            <tr>
+                <td>{{ p.point }}</td>
+                <td>
+                    {% if p.value is number %}
+                        {{ "%.2f" | format(p.value) }}
+                    {% elif p.value is not none %}
+                        {{ p.value }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ p.units }}</td>
+                <td><span class="badge badge-{{ p.protocol | lower }}">{{ p.obj_type }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</details>
+{% endfor %}
+{% else %}
+<p><em>No simulator data. Start some devices first.</em></p>
+{% endif %}

@@ -62,21 +62,23 @@ registers:
       unit: "%"
       initial_value: 0.0
       behavior:
-        type: sine_wave
-        center: 20.0
-        amplitude: 20.0
-        period: 1800
+        type: deadband_switch
+        sources: ["Zone Temperature"]
+        threshold: 71.0
+        above: false
+        output_value: 75.0
 
     - address: 12
       name: "Cooling Output"
       datatype: FLOAT32
       unit: "%"
-      initial_value: 30.0
+      initial_value: 0.0
       behavior:
-        type: sine_wave
-        center: 30.0
-        amplitude: 25.0
-        period: 1800
+        type: deadband_switch
+        sources: ["Zone Temperature"]
+        threshold: 73.0
+        above: true
+        output_value: 80.0
 
     - address: 14
       name: "Mode"

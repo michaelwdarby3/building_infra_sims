@@ -193,7 +193,40 @@ async def action_load_scenario(
     return RedirectResponse("/devices", status_code=303)
 
 
+# ── Simulator data page ────────────────────────────────────────────────
+
+
+@router.get("/sim-data", response_class=HTMLResponse)
+async def sim_data_page(request: Request):
+    state = _get_state(request)
+    points = state.read_local_telemetry()
+    # Group by device for display
+    devices: dict[str, list] = {}
+    for p in points:
+        devices.setdefault(p["device"], []).append(p)
+    return templates.TemplateResponse(
+        request,
+        "sim_data.html",
+        {"devices": devices, "total_points": len(points)},
+    )
+
+
 # ── HTMX partials ────────────────────────────────────────────────────────
+
+
+@router.get("/api/sim-data", response_class=HTMLResponse)
+async def api_sim_data_partial(request: Request):
+    """Return just the simulator data table (HTMX swap target)."""
+    state = _get_state(request)
+    points = state.read_local_telemetry()
+    devices: dict[str, list] = {}
+    for p in points:
+        devices.setdefault(p["device"], []).append(p)
+    return templates.TemplateResponse(
+        request,
+        "partials/sim_data_table.html",
+        {"devices": devices, "total_points": len(points)},
+    )
 
 
 @router.get("/api/telemetry", response_class=HTMLResponse)
@@ -221,8 +254,21 @@ async def api_devices_partial(request: Request):
 
 
 @router.get("/api/telemetry/history")
-async def api_telemetry_history(request: Request):
-    """JSON time-series data for charts."""
+async def api_telemetry_history(request: Request, source: str = "auto"):
+    """JSON time-series data for charts.
+
+    source: "local" (recorder), "gateway" (Skybox SQL), or "auto" (local first, gateway fallback).
+    """
     state = _get_state(request)
-    rows = await state.fetch_telemetry_history(minutes=60)
-    return {"rows": rows, "count": len(rows)}
+
+    rows: list[dict] = []
+    used_source = "local"
+
+    if source in ("local", "auto"):
+        rows = state.recorder.get_history(minutes=60)
+
+    if not rows and source in ("gateway", "auto"):
+        rows = await state.fetch_telemetry_history(minutes=60)
+        used_source = "gateway"
+
+    return {"rows": rows, "count": len(rows), "source": used_source}

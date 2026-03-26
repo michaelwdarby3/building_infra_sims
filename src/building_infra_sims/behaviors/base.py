@@ -39,6 +39,19 @@ class SineWave(ValueBehavior):
         return self.center + self.amplitude * math.sin(2 * math.pi * elapsed / self.period)
 
 
+class PhasedSineWave(SineWave):
+    """Sine wave with a phase offset. For 3-phase electrical simulation."""
+
+    def __init__(self, center: float, amplitude: float, period: float = 3600.0, phase_offset: float = 0.0):
+        super().__init__(center, amplitude, period)
+        self.phase_offset = phase_offset  # radians
+
+    def update(self, elapsed: float) -> float:
+        return self.center + self.amplitude * math.sin(
+            2 * math.pi * elapsed / self.period + self.phase_offset
+        )
+
+
 class RandomWalk(ValueBehavior):
     """Brownian motion within bounds."""
 
@@ -114,6 +127,76 @@ class BinaryToggle(ValueBehavior):
         return self.on_value if position < self.on_duration else self.off_value
 
 
+class DerivedDewPoint(ValueBehavior):
+    """Dew point derived from temperature and relative humidity using the Magnus formula."""
+
+    def __init__(self, temp_behavior: ValueBehavior, rh_behavior: ValueBehavior):
+        self.temp_behavior = temp_behavior
+        self.rh_behavior = rh_behavior
+
+    def update(self, elapsed: float) -> float:
+        temp_f = self.temp_behavior.update(elapsed)
+        rh = self.rh_behavior.update(elapsed)
+        rh = max(1.0, min(100.0, rh))
+        # Convert to Celsius for Magnus formula
+        temp_c = (temp_f - 32.0) * 5.0 / 9.0
+        a, b = 17.27, 237.7
+        gamma = (a * temp_c) / (b + temp_c) + math.log(rh / 100.0)
+        dew_c = (b * gamma) / (a - gamma)
+        return dew_c * 9.0 / 5.0 + 32.0
+
+
+class DerivedWetBulb(ValueBehavior):
+    """Wet bulb temperature derived from temp and RH using the Stull approximation."""
+
+    def __init__(self, temp_behavior: ValueBehavior, rh_behavior: ValueBehavior):
+        self.temp_behavior = temp_behavior
+        self.rh_behavior = rh_behavior
+
+    def update(self, elapsed: float) -> float:
+        temp_f = self.temp_behavior.update(elapsed)
+        rh = self.rh_behavior.update(elapsed)
+        rh = max(1.0, min(100.0, rh))
+        # Convert to Celsius for Stull formula
+        temp_c = (temp_f - 32.0) * 5.0 / 9.0
+        # Stull (2011) approximation
+        wb_c = temp_c * math.atan(0.151977 * math.sqrt(rh + 8.313659)) + \
+            math.atan(temp_c + rh) - math.atan(rh - 1.676331) + \
+            0.00391838 * rh ** 1.5 * math.atan(0.023101 * rh) - 4.686035
+        return wb_c * 9.0 / 5.0 + 32.0
+
+
+class DeadbandSwitch(ValueBehavior):
+    """Outputs a value when source crosses a threshold, zero otherwise.
+
+    Useful for mutually exclusive heating/cooling: heating only when
+    source < threshold, cooling only when source > threshold.
+    """
+
+    def __init__(
+        self,
+        source_behavior: ValueBehavior,
+        threshold: float,
+        above: bool = True,
+        output_behavior: ValueBehavior | None = None,
+        output_value: float = 100.0,
+    ):
+        self.source_behavior = source_behavior
+        self.threshold = threshold
+        self.above = above
+        self.output_behavior = output_behavior
+        self.output_value = output_value
+
+    def update(self, elapsed: float) -> float:
+        source_val = self.source_behavior.update(elapsed)
+        active = (source_val > self.threshold) if self.above else (source_val < self.threshold)
+        if not active:
+            return 0.0
+        if self.output_behavior:
+            return max(0.0, self.output_behavior.update(elapsed))
+        return self.output_value
+
+
 def create_behavior(config: dict[str, Any]) -> ValueBehavior:
     """Factory: create a ValueBehavior from a profile config dict."""
     behavior_type = config["type"]
@@ -126,6 +209,14 @@ def create_behavior(config: dict[str, Any]) -> ValueBehavior:
             center=config["center"],
             amplitude=config["amplitude"],
             period=config.get("period", 3600.0),
+        )
+
+    elif behavior_type == "phased_sine_wave":
+        return PhasedSineWave(
+            center=config["center"],
+            amplitude=config["amplitude"],
+            period=config.get("period", 3600.0),
+            phase_offset=config.get("phase_offset", 0.0),
         )
 
     elif behavior_type == "random_walk":
@@ -156,5 +247,59 @@ def create_behavior(config: dict[str, Any]) -> ValueBehavior:
             off_duration=config.get("off_duration", 300.0),
         )
 
+    elif behavior_type in ("dew_point", "wet_bulb", "deadband_switch"):
+        # These require source behaviors — resolved in a second pass by the
+        # profile loader. Return a placeholder that stores the config.
+        return _DeferredBehavior(config)
+
     else:
         raise ValueError(f"Unknown behavior type: {behavior_type}")
+
+
+class _DeferredBehavior(ValueBehavior):
+    """Placeholder for behaviors that need source resolution."""
+
+    def __init__(self, config: dict[str, Any]):
+        self.config = config
+
+    def update(self, elapsed: float) -> Any:
+        raise RuntimeError(
+            f"Deferred behavior '{self.config['type']}' was not resolved — "
+            f"missing second-pass source resolution"
+        )
+
+
+def resolve_deferred(
+    behavior: ValueBehavior,
+    behaviors_by_name: dict[str, ValueBehavior],
+) -> ValueBehavior:
+    """Resolve a _DeferredBehavior into its real behavior using source references."""
+    if not isinstance(behavior, _DeferredBehavior):
+        return behavior
+
+    config = behavior.config
+    btype = config["type"]
+    sources = config.get("sources", [])
+
+    if btype == "dew_point":
+        return DerivedDewPoint(
+            temp_behavior=behaviors_by_name[sources[0]],
+            rh_behavior=behaviors_by_name[sources[1]],
+        )
+    elif btype == "wet_bulb":
+        return DerivedWetBulb(
+            temp_behavior=behaviors_by_name[sources[0]],
+            rh_behavior=behaviors_by_name[sources[1]],
+        )
+    elif btype == "deadband_switch":
+        source = behaviors_by_name[sources[0]]
+        output = behaviors_by_name.get(sources[1]) if len(sources) > 1 else None
+        return DeadbandSwitch(
+            source_behavior=source,
+            threshold=config.get("threshold", 72.0),
+            above=config.get("above", True),
+            output_behavior=output,
+            output_value=config.get("output_value", 100.0),
+        )
+    else:
+        raise ValueError(f"Cannot resolve deferred behavior type: {btype}")

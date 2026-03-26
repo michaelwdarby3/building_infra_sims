@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Simulator Data{% endblock %}
+
+{% block content %}
+<h2>Simulator Data
+    <span class="htmx-indicator" aria-busy="true" style="font-size: 0.9rem; margin-left: 0.5rem;">updating...</span>
+</h2>
+<p>{{ total_points }} data points from {{ devices | length }} device{{ "s" if devices | length != 1 }}
+    <small>(auto-refreshes every 5s)</small>
+</p>
+
+<div id="sim-data-table"
+     hx-get="/api/sim-data"
+     hx-trigger="every 5s"
+     hx-swap="innerHTML"
+     hx-indicator=".htmx-indicator">
+    {% include "partials/sim_data_table.html" with context %}
+</div>
+{% endblock %}

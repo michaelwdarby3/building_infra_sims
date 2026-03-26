@@ -1,0 +1,121 @@
+name: "Generic Fan Coil Unit"
+description: "2-pipe or 4-pipe fan coil unit with chilled and hot water valves"
+device_id: 6101
+port: 47808
+
+objects:
+  # ── Sensors ──
+  - object_type: analog-input
+    instance: 1
+    name: "Room Temperature"
+    present_value: 72.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 72.0
+      amplitude: 2.5
+      period: 7200
+
+  - object_type: analog-input
+    instance: 2
+    name: "Supply Air Temp"
+    present_value: 58.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 58.0
+      step_size: 1.0
+      min: 52.0
+      max: 95.0
+
+  - object_type: analog-input
+    instance: 3
+    name: "CHW Valve Feedback"
+    present_value: 40.0
+    units: percent
+    behavior:
+      type: sine_wave
+      center: 40.0
+      amplitude: 30.0
+      period: 3600
+
+  - object_type: analog-input
+    instance: 4
+    name: "HW Valve Feedback"
+    present_value: 0.0
+    units: percent
+    behavior:
+      type: sine_wave
+      center: 10.0
+      amplitude: 10.0
+      period: 3600
+
+  # ── Commands ──
+  - object_type: analog-output
+    instance: 1
+    name: "Fan Speed CMD"
+    present_value: 75.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 2
+    name: "CHW Valve CMD"
+    present_value: 40.0
+    units: percent
+
+  - object_type: analog-output
+    instance: 3
+    name: "HW Valve CMD"
+    present_value: 0.0
+    units: percent
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Fan Status"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 1200
+      off_duration: 120
+
+  - object_type: binary-input
+    instance: 2
+    name: "Occupancy"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 600
+      off_duration: 300
+
+  - object_type: binary-input
+    instance: 3
+    name: "Window Contact"
+    present_value: inactive
+    description: "Closed = inactive, Open = active"
+
+  # ── Setpoints ──
+  - object_type: analog-value
+    instance: 1
+    name: "Cooling Setpoint"
+    present_value: 74.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 2
+    name: "Heating Setpoint"
+    present_value: 68.0
+    units: degrees-fahrenheit
+
+  # ── Mode ──
+  - object_type: multi-state-value
+    instance: 1
+    name: "Fan Speed Mode"
+    present_value: 4
+    description: "1=Off 2=Low 3=Med 4=High 5=Auto"
+
+  - object_type: multi-state-value
+    instance: 2
+    name: "Operating Mode"
+    present_value: 2
+    description: "1=Off 2=Cool 3=Heat 4=Auto"

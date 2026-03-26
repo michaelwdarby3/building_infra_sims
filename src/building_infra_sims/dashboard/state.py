@@ -10,6 +10,8 @@ from typing import Any
 
 import yaml
 
+from building_infra_sims.dashboard.recorder import TelemetryRecorder
+
 logger = logging.getLogger(__name__)
 
 BACNET_BASE_PORT = 47808
@@ -63,6 +65,8 @@ class DashboardState:
         self._connections_cache = CachedValue(ttl=15.0)
         self._stats_cache = CachedValue(ttl=15.0)
         self._lock = asyncio.Lock()
+        self.recorder = TelemetryRecorder()
+        self._recording_task: asyncio.Task | None = None
 
     # ── Profile discovery ─────────────────────────────────────────────────
 
@@ -241,6 +245,34 @@ class DashboardState:
         for device in list(self.devices.values()):
             if device.status == "running":
                 await self.stop_device(device.id)
+
+    # ── Recording ───────────────────────────────────────────────────────
+
+    async def start_recording(self, interval: float = 5.0) -> None:
+        """Start background task that records simulator telemetry."""
+        if self._recording_task is not None:
+            return
+        self._recording_task = asyncio.create_task(self._record_loop(interval))
+
+    async def stop_recording(self) -> None:
+        """Stop the background recording task."""
+        if self._recording_task:
+            self._recording_task.cancel()
+            try:
+                await self._recording_task
+            except asyncio.CancelledError:
+                pass
+            self._recording_task = None
+
+    async def _record_loop(self, interval: float) -> None:
+        while True:
+            try:
+                points = self.read_local_telemetry()
+                if points:
+                    self.recorder.record_snapshot(points)
+            except Exception as e:
+                logger.warning(f"Recording snapshot failed: {e}")
+            await asyncio.sleep(interval)
 
     # ── Scenario loading ──────────────────────────────────────────────────
 
@@ -486,6 +518,62 @@ class DashboardState:
                 }
             devices.append(info)
         return devices
+
+    # ── Local telemetry (reads directly from simulators) ─────────────────
+
+    def read_local_telemetry(self) -> list[dict]:
+        """Read current values from all running simulators."""
+        from bacpypes3.primitivedata import ObjectIdentifier
+
+        points = []
+        for dev in self.devices.values():
+            if dev.status != "running":
+                continue
+            sim = dev.sim
+
+            if dev.protocol == "bacnet":
+                if not sim._app:
+                    continue
+                for obj_def in sim._object_defs:
+                    try:
+                        oid = ObjectIdentifier(obj_def["object-identifier"])
+                        obj = sim._app.get_object_id(oid)
+                        if obj is None:
+                            continue
+                        value = obj.presentValue
+                        # Convert BACpypes values to plain Python types
+                        if hasattr(value, "value"):
+                            value = value.value
+                        if isinstance(value, float):
+                            value = round(value, 4)
+                        points.append({
+                            "device": dev.name,
+                            "device_id": dev.id,
+                            "protocol": "BACnet",
+                            "point": obj_def["object-name"],
+                            "value": value,
+                            "units": obj_def.get("units", ""),
+                            "obj_type": obj_def["object-type"],
+                        })
+                    except Exception:
+                        continue
+
+            elif dev.protocol == "modbus":
+                for reg_data in sim.get_register_values():
+                    value = reg_data["value"]
+                    if isinstance(value, float):
+                        value = round(value, 4)
+                    points.append({
+                        "device": dev.name,
+                        "device_id": dev.id,
+                        "protocol": "Modbus",
+                        "point": reg_data["name"],
+                        "value": value,
+                        "units": reg_data["units"],
+                        "obj_type": reg_data["datatype"],
+                    })
+
+        return points
 
     # ── Gateway data (cached) ─────────────────────────────────────────────
 

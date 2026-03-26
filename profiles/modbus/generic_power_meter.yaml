@@ -47,10 +47,11 @@ registers:
       unit: A
       initial_value: 15.2
       behavior:
-        type: sine_wave
+        type: phased_sine_wave
         center: 15.0
         amplitude: 5.0
         period: 1800
+        phase_offset: 0.0
 
     - address: 8
       name: "Current Phase B"
@@ -58,10 +59,11 @@ registers:
       unit: A
       initial_value: 14.8
       behavior:
-        type: sine_wave
+        type: phased_sine_wave
         center: 15.0
         amplitude: 5.0
         period: 1800
+        phase_offset: 2.094
 
     - address: 10
       name: "Current Phase C"
@@ -69,10 +71,11 @@ registers:
       unit: A
       initial_value: 15.0
       behavior:
-        type: sine_wave
+        type: phased_sine_wave
         center: 15.0
         amplitude: 5.0
         period: 1800
+        phase_offset: 4.189
 
     - address: 20
       name: "Power Factor"

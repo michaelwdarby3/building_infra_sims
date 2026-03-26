@@ -189,13 +189,13 @@ class TestScenarioLoading:
     @pytest.mark.asyncio
     async def test_load_small_office(self, state):
         devices = await state.load_scenario("profiles/scenarios/small_office.yaml")
-        assert len(devices) == 9  # 7 BACnet + 2 Modbus
+        assert len(devices) == 10  # 7 BACnet + 3 Modbus
 
         summary = state.get_device_summary()
         bacnet = [d for d in summary if d["protocol"] == "BACnet"]
         modbus = [d for d in summary if d["protocol"] == "Modbus"]
         assert len(bacnet) == 7
-        assert len(modbus) == 2
+        assert len(modbus) == 3
 
         await state.stop_all()
 
@@ -298,3 +298,81 @@ class TestPartials:
         data = resp.json()
         assert "rows" in data
         assert "count" in data
+
+    def test_sim_data_partial_empty(self, client):
+        resp = client.get("/api/sim-data")
+        assert resp.status_code == 200
+        assert "No simulator data" in resp.text
+
+    def test_sim_data_partial_with_device(self, client):
+        client.post(
+            "/actions/start-device",
+            data={
+                "profile_path": "profiles/modbus/generic_power_meter.yaml",
+                "protocol": "modbus",
+            },
+            follow_redirects=False,
+        )
+        resp = client.get("/api/sim-data")
+        assert resp.status_code == 200
+        assert "Generic Power Meter" in resp.text
+
+
+# ── Local telemetry ──────────────────────────────────────────────────────
+
+
+class TestLocalTelemetry:
+    def test_sim_data_page_empty(self, client):
+        resp = client.get("/sim-data")
+        assert resp.status_code == 200
+        assert "Simulator Data" in resp.text
+        assert "0 data points" in resp.text
+
+    def test_sim_data_page_with_device(self, client):
+        client.post(
+            "/actions/start-device",
+            data={
+                "profile_path": "profiles/modbus/generic_power_meter.yaml",
+                "protocol": "modbus",
+            },
+            follow_redirects=False,
+        )
+        resp = client.get("/sim-data")
+        assert resp.status_code == 200
+        assert "Generic Power Meter" in resp.text
+
+    @pytest.mark.asyncio
+    async def test_read_local_telemetry_modbus(self, state):
+        await state.start_modbus_device(
+            profile_path="profiles/modbus/generic_power_meter.yaml",
+        )
+        points = state.read_local_telemetry()
+        assert len(points) > 0
+        for p in points:
+            assert "device" in p
+            assert "point" in p
+            assert "value" in p
+            assert "units" in p
+            assert p["protocol"] == "Modbus"
+
+        await state.stop_all()
+
+    @pytest.mark.asyncio
+    async def test_read_local_telemetry_bacnet(self, state):
+        await state.start_bacnet_device(
+            profile_path="profiles/bacnet/generic_vav.yaml",
+        )
+        points = state.read_local_telemetry()
+        assert len(points) > 0
+        for p in points:
+            assert "device" in p
+            assert "point" in p
+            assert "value" in p
+            assert p["protocol"] == "BACnet"
+
+        await state.stop_all()
+
+    @pytest.mark.asyncio
+    async def test_read_local_telemetry_empty(self, state):
+        points = state.read_local_telemetry()
+        assert points == []

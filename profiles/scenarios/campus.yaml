@@ -1,5 +1,5 @@
 name: "University Campus"
-description: "4 AHUs, 16 VAVs, 2 boilers, 2 chillers, 2 cooling towers, 2 heat pumps, 2 meters, 1 lighting, 1 fire alarm + 13 Modbus (~44 total)"
+description: "4 AHUs, 2 RTUs, 16 VAVs, 4 FCUs, 2 boilers, 2 chillers, 2 cooling towers, 2 heat pumps, 1 DHW, 2 meters, 1 lighting, 1 fire alarm + 19 Modbus (~56 total)"
 
 bacnet_devices:
   # ── AHUs (4 buildings) ──
@@ -45,6 +45,26 @@ bacnet_devices:
     device_id: 2015
   - profile: profiles/bacnet/generic_vav.yaml
     device_id: 2016
+
+  # ── RTUs ──
+  - profile: profiles/bacnet/generic_rtu.yaml
+    device_id: 6001
+  - profile: profiles/bacnet/generic_rtu.yaml
+    device_id: 6002
+
+  # ── FCUs ──
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 6101
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 6102
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 6103
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 6104
+
+  # ── DHW ──
+  - profile: profiles/bacnet/generic_dhw.yaml
+    device_id: 6201
 
   # ── Boilers ──
   - profile: profiles/bacnet/generic_boiler.yaml
@@ -129,7 +149,28 @@ modbus_devices:
     port: 10531
     unit_id: 1
 
+  # ── Pumps ──
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10550
+    unit_id: 1
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10551
+    unit_id: 1
+
+  # ── Exhaust fans ──
+  - profile: profiles/modbus/generic_exhaust_fan.yaml
+    port: 10560
+    unit_id: 1
+  - profile: profiles/modbus/generic_exhaust_fan.yaml
+    port: 10561
+    unit_id: 1
+
   # ── Weather station ──
   - profile: profiles/modbus/generic_weather_station.yaml
     port: 10540
+    unit_id: 1
+
+  # ── Energy meter ──
+  - profile: profiles/modbus/generic_energy_meter_demand.yaml
+    port: 10570
     unit_id: 1
