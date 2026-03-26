@@ -1,0 +1,279 @@
+"""Scenario runner: orchestrate multiple simulators from a single YAML config.
+
+Runs all BACnet and Modbus simulators in a single process. BACnet devices
+are auto-assigned sequential UDP ports (47808, 47809, ...) so multiple
+BACpypes3 Applications can coexist without conflicts. Modbus devices each
+get their own TCP port as configured.
+
+Optionally registers all simulated devices with the gateway via its API.
+"""
+
+import asyncio
+import logging
+import signal
+from pathlib import Path
+from typing import Any
+
+import yaml
+from rich.console import Console
+from rich.table import Table
+
+from building_infra_sims.bacnet.profiles import (
+    create_simulator_from_profile as create_bacnet_sim,
+)
+from building_infra_sims.modbus.profiles import (
+    create_simulator_from_profile as create_modbus_sim,
+)
+
+logger = logging.getLogger(__name__)
+console = Console()
+
+BACNET_BASE_PORT = 47808
+
+
+def load_scenario(scenario_path: str | Path) -> dict[str, Any]:
+    path = Path(scenario_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Scenario not found: {path}")
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+class ScenarioRunner:
+    """Start and manage multiple BACnet/Modbus simulators from a scenario config."""
+
+    def __init__(self, scenario_path: str | Path):
+        self._scenario = load_scenario(scenario_path)
+        self._bacnet_sims = []
+        self._modbus_sims = []
+        self._local_ip: str | None = None
+
+    @property
+    def name(self) -> str:
+        return self._scenario.get("name", "Unnamed Scenario")
+
+    def _build_simulators(self) -> None:
+        # Auto-assign sequential BACnet ports
+        bacnet_port = BACNET_BASE_PORT
+        for dev in self._scenario.get("bacnet_devices", []):
+            port = dev.get("port", bacnet_port)
+            sim = create_bacnet_sim(
+                profile_path=dev["profile"],
+                device_id=dev.get("device_id"),
+                ip_address=dev.get("ip_address"),
+                port=port,
+            )
+            self._bacnet_sims.append(sim)
+            # Next device gets the next port (if not explicitly set)
+            if "port" not in dev:
+                bacnet_port = port + 1
+            else:
+                bacnet_port = max(bacnet_port, port + 1)
+
+        for dev in self._scenario.get("modbus_devices", []):
+            sim = create_modbus_sim(
+                profile_path=dev["profile"],
+                port=dev.get("port"),
+                unit_id=dev.get("unit_id"),
+                bind_address=dev.get("bind_address", "0.0.0.0"),
+            )
+            self._modbus_sims.append(sim)
+
+    def _print_device_table(self) -> None:
+        """Print a summary table of all running devices."""
+        table = Table(title=f"Scenario: {self.name}")
+        table.add_column("Protocol", style="cyan")
+        table.add_column("Device Name", style="bold")
+        table.add_column("ID / Unit", style="green")
+        table.add_column("Address", style="yellow")
+        table.add_column("Objects / Registers")
+
+        for sim in self._bacnet_sims:
+            self._local_ip = self._local_ip or sim.ip_address
+            table.add_row(
+                "BACnet",
+                sim.device_name,
+                str(sim.device_id),
+                f"{sim.ip_address}:{sim.port}",
+                str(len(sim._object_defs)),
+            )
+
+        for sim in self._modbus_sims:
+            table.add_row(
+                "Modbus",
+                sim.device_name,
+                f"unit {sim.unit_id}",
+                f"{sim.bind_address}:{sim.port}",
+                str(len(sim._registers)),
+            )
+
+        console.print(table)
+
+    async def start(self) -> None:
+        """Build and start all simulators."""
+        self._build_simulators()
+
+        logger.info(
+            f"Starting scenario '{self.name}': "
+            f"{len(self._bacnet_sims)} BACnet + {len(self._modbus_sims)} Modbus devices"
+        )
+
+        # Start all simulators concurrently
+        tasks = []
+        for sim in self._bacnet_sims:
+            tasks.append(sim.start())
+        for sim in self._modbus_sims:
+            tasks.append(sim.start())
+
+        await asyncio.gather(*tasks)
+
+        self._print_device_table()
+        logger.info(f"Scenario '{self.name}' is fully online")
+
+    async def stop(self) -> None:
+        """Stop all simulators."""
+        tasks = []
+        for sim in self._bacnet_sims:
+            tasks.append(sim.stop())
+        for sim in self._modbus_sims:
+            tasks.append(sim.stop())
+
+        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info(f"Scenario '{self.name}' stopped")
+
+    async def register_with_skybox(
+        self,
+        base_url: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
+        """Register all simulated devices as connections in the gateway."""
+        from building_infra_sims.config import settings
+        from building_infra_sims.skybox.client import SkyboxClient
+        from building_infra_sims.skybox.models import (
+            BacnetConnectionConfig,
+            ConnectionCreate,
+            ConnectionType,
+            ModbusConnectionConfig,
+        )
+
+        url = base_url or settings.skybox_base_url
+        user = username or settings.skybox_username
+        pwd = password or settings.skybox_password
+
+        if not user or not pwd:
+            logger.warning("Gateway credentials not configured — skipping registration")
+            return
+
+        async with SkyboxClient(url, user, pwd) as sb:
+            await sb.sign_in()
+
+            # Get existing connections to avoid duplicates
+            existing = await sb.list_connections()
+            existing_names = {c.name for c in existing.items}
+
+            created = 0
+
+            for sim in self._bacnet_sims:
+                conn_name = f"Sim: {sim.device_name}"
+                if conn_name in existing_names:
+                    logger.info(f"Connection '{conn_name}' already exists — skipping")
+                    continue
+
+                ip = sim.ip_address or self._local_ip
+                await sb.create_connection(
+                    ConnectionCreate(
+                        name=conn_name,
+                        description=f"Simulated BACnet device (scenario: {self.name})",
+                        connection_type=ConnectionType.BACNET_IP,
+                        config=BacnetConnectionConfig(
+                            ip_address=ip,
+                            device_id=sim.device_id,
+                            port=sim.port,
+                            auto_discover=True,
+                            poll_interval=30,
+                        ),
+                    )
+                )
+                logger.info(f"Registered BACnet device '{sim.device_name}' with gateway")
+                created += 1
+
+            for sim in self._modbus_sims:
+                conn_name = f"Sim: {sim.device_name}"
+                if conn_name in existing_names:
+                    logger.info(f"Connection '{conn_name}' already exists — skipping")
+                    continue
+
+                ip = self._local_ip or "127.0.0.1"
+                await sb.create_connection(
+                    ConnectionCreate(
+                        name=conn_name,
+                        description=f"Simulated Modbus device (scenario: {self.name})",
+                        connection_type=ConnectionType.MODBUS_TCP,
+                        config=ModbusConnectionConfig(
+                            ip_address=ip,
+                            port=sim.port,
+                            unit_id=sim.unit_id,
+                            poll_interval=30,
+                        ),
+                    )
+                )
+                logger.info(f"Registered Modbus device '{sim.device_name}' with gateway")
+                created += 1
+
+            console.print(
+                f"[bold green]Registered {created} new connections with gateway[/bold green] "
+                f"({len(existing_names)} already existed)"
+            )
+
+    async def unregister_from_skybox(
+        self,
+        base_url: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
+        """Remove all 'Sim: ...' connections from the gateway."""
+        from building_infra_sims.config import settings
+        from building_infra_sims.skybox.client import SkyboxClient
+
+        url = base_url or settings.skybox_base_url
+        user = username or settings.skybox_username
+        pwd = password or settings.skybox_password
+
+        async with SkyboxClient(url, user, pwd) as sb:
+            await sb.sign_in()
+            conns = await sb.list_connections()
+            removed = 0
+            for c in conns.items:
+                if c.name.startswith("Sim: ") and c.id:
+                    await sb.delete_connection(c.id)
+                    logger.info(f"Removed connection '{c.name}'")
+                    removed += 1
+
+            console.print(f"[bold]Removed {removed} simulated connections from gateway[/bold]")
+
+    async def run_forever(self, setup_skybox: bool = False) -> None:
+        """Start and run until SIGINT/SIGTERM."""
+        await self.start()
+
+        if setup_skybox:
+            await self.register_with_skybox()
+
+        stop_event = asyncio.Event()
+        loop = asyncio.get_event_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, stop_event.set)
+
+        console.print("\n[bold]All devices running. Press Ctrl+C to stop.[/bold]\n")
+        await stop_event.wait()
+        await self.stop()
+
+
+def run_scenario(scenario_path: str, setup_skybox: bool = False) -> None:
+    """CLI entry point."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    runner = ScenarioRunner(scenario_path)
+    asyncio.run(runner.run_forever(setup_skybox=setup_skybox))

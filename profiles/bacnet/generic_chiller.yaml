@@ -1,0 +1,160 @@
+name: "Generic Chiller"
+description: "Water-cooled chiller with entering/leaving temps and compressor staging"
+device_id: 5001
+port: 47808
+
+objects:
+  # ── Chilled water ──
+  - object_type: analog-input
+    instance: 1
+    name: "Chilled Water Supply Temp"
+    present_value: 44.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 44.0
+      step_size: 0.3
+      min: 40.0
+      max: 48.0
+
+  - object_type: analog-input
+    instance: 2
+    name: "Chilled Water Return Temp"
+    present_value: 54.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 54.0
+      step_size: 0.5
+      min: 48.0
+      max: 60.0
+
+  # ── Condenser water ──
+  - object_type: analog-input
+    instance: 3
+    name: "Condenser Water Supply Temp"
+    present_value: 85.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 85.0
+      amplitude: 3.0
+      period: 7200
+
+  - object_type: analog-input
+    instance: 4
+    name: "Condenser Water Return Temp"
+    present_value: 95.0
+    units: degrees-fahrenheit
+    behavior:
+      type: sine_wave
+      center: 95.0
+      amplitude: 3.0
+      period: 7200
+
+  # ── Performance ──
+  - object_type: analog-input
+    instance: 10
+    name: "Compressor Current"
+    present_value: 120.0
+    units: amperes
+    behavior:
+      type: sine_wave
+      center: 120.0
+      amplitude: 40.0
+      period: 3600
+
+  - object_type: analog-input
+    instance: 11
+    name: "Evaporator Pressure"
+    present_value: 62.0
+    units: pounds-per-square-inch
+    behavior:
+      type: random_walk
+      center: 62.0
+      step_size: 1.0
+      min: 55.0
+      max: 70.0
+
+  - object_type: analog-input
+    instance: 12
+    name: "Condenser Pressure"
+    present_value: 180.0
+    units: pounds-per-square-inch
+    behavior:
+      type: random_walk
+      center: 180.0
+      step_size: 2.0
+      min: 160.0
+      max: 200.0
+
+  - object_type: analog-input
+    instance: 13
+    name: "Capacity Percent"
+    present_value: 65.0
+    units: percent
+    behavior:
+      type: sine_wave
+      center: 60.0
+      amplitude: 30.0
+      period: 3600
+
+  # ── Commands ──
+  - object_type: binary-output
+    instance: 1
+    name: "Chiller Enable"
+    present_value: active
+    description: "Chiller start/stop"
+
+  - object_type: analog-output
+    instance: 1
+    name: "Chilled Water Setpoint Cmd"
+    present_value: 44.0
+    units: degrees-fahrenheit
+    description: "Remote chilled water setpoint"
+
+  - object_type: analog-output
+    instance: 2
+    name: "Demand Limit Cmd"
+    present_value: 100.0
+    units: percent
+    description: "Demand limit percentage"
+
+  # ── Setpoints ──
+  - object_type: analog-value
+    instance: 1
+    name: "Chilled Water Setpoint"
+    present_value: 44.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 2
+    name: "Demand Limit"
+    present_value: 100.0
+    units: percent
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Compressor Running"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 1800
+      off_duration: 300
+
+  - object_type: binary-input
+    instance: 2
+    name: "Chilled Water Flow"
+    present_value: active
+
+  - object_type: binary-value
+    instance: 1
+    name: "General Alarm"
+    present_value: inactive
+
+  - object_type: multi-state-value
+    instance: 1
+    name: "Operating Mode"
+    present_value: 2
+    description: "1=Off 2=Running 3=Pumpdown 4=Lockout 5=Standby"

@@ -1,0 +1,109 @@
+name: "Generic VAV Box"
+description: "Variable Air Volume terminal unit with reheat"
+device_id: 2001
+port: 47808
+
+objects:
+  # ── Sensor Inputs ──
+  - object_type: analog-input
+    instance: 1
+    name: "Zone Temperature"
+    present_value: 72.0
+    units: degrees-fahrenheit
+    description: "Zone space temperature"
+    behavior:
+      type: sine_wave
+      center: 72.0
+      amplitude: 2.0
+      period: 7200
+
+  - object_type: analog-input
+    instance: 2
+    name: "Discharge Air Temperature"
+    present_value: 55.0
+    units: degrees-fahrenheit
+    description: "Air temperature leaving the VAV box"
+    behavior:
+      type: sine_wave
+      center: 56.0
+      amplitude: 3.0
+      period: 3600
+
+  - object_type: analog-input
+    instance: 3
+    name: "Airflow CFM"
+    present_value: 400.0
+    units: cubic-feet-per-minute
+    description: "Measured airflow through the VAV box"
+    behavior:
+      type: sine_wave
+      center: 450.0
+      amplitude: 200.0
+      period: 3600
+
+  # ── Commanded Outputs ──
+  - object_type: analog-output
+    instance: 1
+    name: "Damper Position"
+    present_value: 50.0
+    units: percent
+    description: "VAV damper position command"
+
+  - object_type: analog-output
+    instance: 2
+    name: "Reheat Valve Command"
+    present_value: 0.0
+    units: percent
+    description: "Hot water reheat valve position"
+
+  # ── Setpoints & Config ──
+  - object_type: analog-value
+    instance: 1
+    name: "Cooling Setpoint"
+    present_value: 74.0
+    units: degrees-fahrenheit
+    description: "Zone cooling setpoint"
+
+  - object_type: analog-value
+    instance: 2
+    name: "Heating Setpoint"
+    present_value: 70.0
+    units: degrees-fahrenheit
+    description: "Zone heating setpoint"
+
+  - object_type: analog-value
+    instance: 3
+    name: "Minimum Airflow Setpoint"
+    present_value: 200.0
+    units: cubic-feet-per-minute
+    description: "Minimum ventilation airflow"
+
+  - object_type: analog-value
+    instance: 4
+    name: "Maximum Airflow Setpoint"
+    present_value: 800.0
+    units: cubic-feet-per-minute
+    description: "Maximum cooling airflow"
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Occupancy Status"
+    present_value: active
+    description: "Zone occupancy sensor"
+    behavior:
+      type: binary_toggle
+      on_duration: 36000
+      off_duration: 14400
+
+  - object_type: binary-value
+    instance: 1
+    name: "Zone Override Active"
+    present_value: inactive
+    description: "Local override is active"
+
+  - object_type: multi-state-value
+    instance: 1
+    name: "Operating Mode"
+    present_value: 2
+    description: "1=Deadband 2=Cooling 3=Heating 4=Unoccupied"

@@ -1,0 +1,111 @@
+name: "Generic Boiler"
+description: "Hot water boiler with supply/return temperatures and firing stages"
+device_id: 4001
+port: 47808
+
+objects:
+  # ── Temperature sensors ──
+  - object_type: analog-input
+    instance: 1
+    name: "Supply Water Temperature"
+    present_value: 160.0
+    units: degrees-fahrenheit
+    description: "Boiler supply water temperature"
+    behavior:
+      type: random_walk
+      center: 160.0
+      step_size: 1.0
+      min: 140.0
+      max: 180.0
+
+  - object_type: analog-input
+    instance: 2
+    name: "Return Water Temperature"
+    present_value: 140.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 140.0
+      step_size: 0.8
+      min: 120.0
+      max: 155.0
+
+  - object_type: analog-input
+    instance: 3
+    name: "Flue Gas Temperature"
+    present_value: 350.0
+    units: degrees-fahrenheit
+    behavior:
+      type: random_walk
+      center: 350.0
+      step_size: 5.0
+      min: 200.0
+      max: 450.0
+
+  - object_type: analog-input
+    instance: 4
+    name: "Inlet Water Pressure"
+    present_value: 15.0
+    units: pounds-per-square-inch
+    behavior:
+      type: random_walk
+      center: 15.0
+      step_size: 0.3
+      min: 10.0
+      max: 20.0
+
+  # ── Commands ──
+  - object_type: binary-output
+    instance: 1
+    name: "Boiler Enable"
+    present_value: active
+    description: "Boiler enable/disable command"
+
+  - object_type: analog-output
+    instance: 1
+    name: "Firing Rate Command"
+    present_value: 50.0
+    units: percent
+    description: "Boiler firing rate setpoint"
+
+  # ── Setpoints ──
+  - object_type: analog-value
+    instance: 1
+    name: "Supply Setpoint"
+    present_value: 160.0
+    units: degrees-fahrenheit
+
+  - object_type: analog-value
+    instance: 2
+    name: "High Limit Cutout"
+    present_value: 200.0
+    units: degrees-fahrenheit
+
+  # ── Status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Flame Status"
+    present_value: active
+    description: "Flame proved"
+    behavior:
+      type: binary_toggle
+      on_duration: 600
+      off_duration: 60
+
+  - object_type: binary-input
+    instance: 2
+    name: "Pump Status"
+    present_value: active
+    description: "Circulating pump running"
+
+  - object_type: binary-value
+    instance: 1
+    name: "Lockout Alarm"
+    present_value: inactive
+    description: "Boiler safety lockout"
+
+  - object_type: multi-state-value
+    instance: 1
+    name: "Operating Stage"
+    present_value: 2
+    description: "1=Off 2=Low Fire 3=High Fire 4=Lockout"

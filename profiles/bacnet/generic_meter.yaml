@@ -1,0 +1,148 @@
+name: "Generic BACnet Power Meter"
+description: "3-phase power meter exposed over BACnet/IP"
+device_id: 3001
+port: 47808
+
+objects:
+  # ── Voltage (line-to-neutral) ──
+  - object_type: analog-input
+    instance: 1
+    name: "Voltage Phase A"
+    present_value: 120.1
+    units: volts
+    description: "Phase A line-to-neutral voltage"
+    behavior:
+      type: random_walk
+      center: 120.0
+      step_size: 0.3
+      min: 118.0
+      max: 122.0
+
+  - object_type: analog-input
+    instance: 2
+    name: "Voltage Phase B"
+    present_value: 120.0
+    units: volts
+    behavior:
+      type: random_walk
+      center: 120.0
+      step_size: 0.3
+      min: 118.0
+      max: 122.0
+
+  - object_type: analog-input
+    instance: 3
+    name: "Voltage Phase C"
+    present_value: 119.9
+    units: volts
+    behavior:
+      type: random_walk
+      center: 120.0
+      step_size: 0.3
+      min: 118.0
+      max: 122.0
+
+  # ── Current ──
+  - object_type: analog-input
+    instance: 4
+    name: "Current Phase A"
+    present_value: 15.0
+    units: amperes
+    behavior:
+      type: sine_wave
+      center: 15.0
+      amplitude: 5.0
+      period: 1800
+
+  - object_type: analog-input
+    instance: 5
+    name: "Current Phase B"
+    present_value: 14.8
+    units: amperes
+    behavior:
+      type: sine_wave
+      center: 15.0
+      amplitude: 5.0
+      period: 1800
+
+  - object_type: analog-input
+    instance: 6
+    name: "Current Phase C"
+    present_value: 15.1
+    units: amperes
+    behavior:
+      type: sine_wave
+      center: 15.0
+      amplitude: 5.0
+      period: 1800
+
+  # ── Power ──
+  - object_type: analog-input
+    instance: 10
+    name: "Total Real Power kW"
+    present_value: 5.4
+    units: kilowatts
+    behavior:
+      type: sine_wave
+      center: 5.0
+      amplitude: 3.0
+      period: 3600
+
+  - object_type: analog-input
+    instance: 11
+    name: "Total Reactive Power kVAR"
+    present_value: 1.2
+    units: kilovolt-amperes-reactive
+    behavior:
+      type: sine_wave
+      center: 1.0
+      amplitude: 0.8
+      period: 3600
+
+  - object_type: analog-input
+    instance: 12
+    name: "Power Factor"
+    present_value: 0.95
+    units: no-units
+    behavior:
+      type: random_walk
+      center: 0.95
+      step_size: 0.01
+      min: 0.85
+      max: 1.0
+
+  - object_type: analog-input
+    instance: 13
+    name: "Frequency"
+    present_value: 60.0
+    units: hertz
+    behavior:
+      type: random_walk
+      center: 60.0
+      step_size: 0.005
+      min: 59.95
+      max: 60.05
+
+  # ── Energy (accumulating) ──
+  - object_type: analog-input
+    instance: 20
+    name: "Total Energy kWh"
+    present_value: 123456.0
+    units: kilowatt-hours
+    behavior:
+      type: accumulator
+      initial: 123456.0
+      rate_per_second: 0.0015
+
+  # ── Device status ──
+  - object_type: binary-input
+    instance: 1
+    name: "Meter Online"
+    present_value: active
+    description: "Meter communication status"
+
+  - object_type: multi-state-value
+    instance: 1
+    name: "Alarm Status"
+    present_value: 1
+    description: "1=Normal 2=Warning 3=Alarm"

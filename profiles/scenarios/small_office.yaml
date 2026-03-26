@@ -1,0 +1,33 @@
+name: "Small Office Building"
+description: "1 AHU, 4 VAV boxes, 1 boiler, 1 power meter (BACnet), 1 VFD + 1 sensor rack (Modbus)"
+
+bacnet_devices:
+  - profile: profiles/bacnet/generic_ahu.yaml
+    device_id: 1001
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2001
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2002
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2003
+
+  - profile: profiles/bacnet/generic_vav.yaml
+    device_id: 2004
+
+  - profile: profiles/bacnet/generic_boiler.yaml
+    device_id: 4001
+
+  - profile: profiles/bacnet/generic_meter.yaml
+    device_id: 3001
+
+modbus_devices:
+  - profile: profiles/modbus/generic_vfd.yaml
+    port: 10503
+    unit_id: 1
+
+  - profile: profiles/modbus/generic_sensor_rack.yaml
+    port: 10504
+    unit_id: 1

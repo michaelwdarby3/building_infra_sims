@@ -1,0 +1,155 @@
+name: "Generic AHU"
+description: "Air Handling Unit with typical BACnet points"
+vendor_name: "SimulatedHVAC"
+
+objects:
+  # --- Temperature Sensors ---
+  - type: analog-input
+    instance: 1
+    name: "Mixed Air Temp"
+    units: degrees-fahrenheit
+    initial_value: 68.0
+    behavior:
+      type: sine_wave
+      center: 68.0
+      amplitude: 5.0
+      period: 3600
+
+  - type: analog-input
+    instance: 2
+    name: "Supply Air Temp"
+    units: degrees-fahrenheit
+    initial_value: 55.0
+    behavior:
+      type: random_walk
+      center: 55.0
+      step_size: 0.3
+      min: 50.0
+      max: 65.0
+
+  - type: analog-input
+    instance: 3
+    name: "Return Air Temp"
+    units: degrees-fahrenheit
+    initial_value: 72.0
+    behavior:
+      type: sine_wave
+      center: 72.0
+      amplitude: 2.0
+      period: 7200
+
+  - type: analog-input
+    instance: 4
+    name: "Outside Air Temp"
+    units: degrees-fahrenheit
+    initial_value: 85.0
+    behavior:
+      type: sine_wave
+      center: 75.0
+      amplitude: 15.0
+      period: 86400  # 24-hour cycle
+
+  - type: analog-input
+    instance: 5
+    name: "Supply Air Pressure"
+    units: inches-of-water
+    initial_value: 1.5
+    behavior:
+      type: random_walk
+      center: 1.5
+      step_size: 0.05
+      min: 0.5
+      max: 2.5
+
+  # --- Valve Commands ---
+  - type: analog-output
+    instance: 1
+    name: "Cooling Valve CMD"
+    units: percent
+    initial_value: 0.0
+
+  - type: analog-output
+    instance: 2
+    name: "Heating Valve CMD"
+    units: percent
+    initial_value: 0.0
+
+  - type: analog-output
+    instance: 3
+    name: "Outside Air Damper CMD"
+    units: percent
+    initial_value: 20.0
+
+  # --- Fan Status ---
+  - type: binary-input
+    instance: 1
+    name: "Supply Fan Status"
+    initial_value: active
+    behavior:
+      type: schedule
+      schedule:
+        "06:00": "active"
+        "22:00": "inactive"
+
+  - type: binary-input
+    instance: 2
+    name: "Return Fan Status"
+    initial_value: active
+    behavior:
+      type: schedule
+      schedule:
+        "06:00": "active"
+        "22:00": "inactive"
+
+  # --- Fan Commands ---
+  - type: binary-output
+    instance: 1
+    name: "Supply Fan CMD"
+    initial_value: active
+
+  - type: binary-output
+    instance: 2
+    name: "Return Fan CMD"
+    initial_value: active
+
+  # --- Setpoints and Values ---
+  - type: analog-value
+    instance: 1
+    name: "Supply Air Temp Setpoint"
+    units: degrees-fahrenheit
+    initial_value: 55.0
+
+  - type: analog-value
+    instance: 2
+    name: "Zone Temp Setpoint"
+    units: degrees-fahrenheit
+    initial_value: 72.0
+
+  - type: analog-value
+    instance: 3
+    name: "Min Outside Air Setpoint"
+    units: percent
+    initial_value: 20.0
+
+  # --- Alarms ---
+  - type: binary-value
+    instance: 1
+    name: "Freeze Alarm"
+    initial_value: inactive
+
+  - type: binary-value
+    instance: 2
+    name: "Filter Alarm"
+    initial_value: inactive
+
+  # --- Operating Mode ---
+  - type: multi-state-value
+    instance: 1
+    name: "Operating Mode"
+    initial_value: 2
+    states:
+      - "Off"
+      - "Auto"
+      - "Cool"
+      - "Heat"
+      - "Emergency Heat"

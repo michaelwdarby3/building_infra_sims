@@ -1,0 +1,133 @@
+name: "Generic VFD"
+description: "Variable Frequency Drive for pump or fan motor"
+unit_id: 1
+port: 10503
+
+registers:
+  holding:
+    # ── Speed/Frequency ──
+    - address: 0
+      name: "Output Frequency"
+      datatype: FLOAT32
+      initial_value: 45.0
+      behavior:
+        type: sine_wave
+        center: 45.0
+        amplitude: 10.0
+        period: 1800
+
+    - address: 2
+      name: "Speed Reference"
+      datatype: FLOAT32
+      initial_value: 45.0
+
+    - address: 4
+      name: "Motor Speed RPM"
+      datatype: FLOAT32
+      initial_value: 1350.0
+      behavior:
+        type: sine_wave
+        center: 1350.0
+        amplitude: 300.0
+        period: 1800
+
+    # ── Electrical ──
+    - address: 10
+      name: "Output Current"
+      datatype: FLOAT32
+      initial_value: 12.5
+      behavior:
+        type: sine_wave
+        center: 12.0
+        amplitude: 5.0
+        period: 1800
+
+    - address: 12
+      name: "Output Voltage"
+      datatype: FLOAT32
+      initial_value: 380.0
+      behavior:
+        type: random_walk
+        center: 380.0
+        step_size: 2.0
+        min: 370.0
+        max: 395.0
+
+    - address: 14
+      name: "Output Power kW"
+      datatype: FLOAT32
+      initial_value: 5.5
+      behavior:
+        type: sine_wave
+        center: 5.0
+        amplitude: 3.0
+        period: 1800
+
+    - address: 16
+      name: "DC Bus Voltage"
+      datatype: FLOAT32
+      initial_value: 540.0
+      behavior:
+        type: random_walk
+        center: 540.0
+        step_size: 3.0
+        min: 520.0
+        max: 560.0
+
+    # ── Thermal ──
+    - address: 20
+      name: "Heatsink Temperature"
+      datatype: FLOAT32
+      initial_value: 45.0
+      behavior:
+        type: random_walk
+        center: 45.0
+        step_size: 1.0
+        min: 30.0
+        max: 70.0
+
+    - address: 22
+      name: "Motor Temperature"
+      datatype: FLOAT32
+      initial_value: 55.0
+      behavior:
+        type: random_walk
+        center: 55.0
+        step_size: 1.5
+        min: 35.0
+        max: 80.0
+
+    # ── Counters ──
+    - address: 30
+      name: "Run Hours"
+      datatype: FLOAT32
+      initial_value: 12500.0
+      behavior:
+        type: accumulator
+        initial: 12500.0
+        rate_per_second: 0.000278
+
+    - address: 32
+      name: "Energy kWh"
+      datatype: FLOAT32
+      initial_value: 87500.0
+      behavior:
+        type: accumulator
+        initial: 87500.0
+        rate_per_second: 0.0014
+
+  input:
+    - address: 0
+      name: "Drive Status Word"
+      datatype: UINT16
+      initial_value: 7
+
+    - address: 1
+      name: "Fault Code"
+      datatype: UINT16
+      initial_value: 0
+
+    - address: 2
+      name: "Warning Code"
+      datatype: UINT16
+      initial_value: 0

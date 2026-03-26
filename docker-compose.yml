@@ -1,0 +1,18 @@
+services:
+  bacnet-sim:
+    build: .
+    # BACnet requires L2 broadcast access for Who-Is/I-Am
+    network_mode: host
+    command: ["bacnet", "run", "--profile", "profiles/bacnet/generic_ahu.yaml", "--device-id", "1001"]
+    volumes:
+      - ./profiles:/app/profiles:ro
+    restart: unless-stopped
+
+  modbus-sim:
+    build: .
+    ports:
+      - "10502:10502"
+    command: ["modbus", "run", "--profile", "profiles/modbus/generic_power_meter.yaml", "--port", "10502"]
+    volumes:
+      - ./profiles:/app/profiles:ro
+    restart: unless-stopped

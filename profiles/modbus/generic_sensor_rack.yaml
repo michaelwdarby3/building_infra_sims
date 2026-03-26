@@ -1,0 +1,118 @@
+name: "Generic Sensor Rack"
+description: "Multi-sensor module with temperature, humidity, CO2, and pressure"
+unit_id: 1
+port: 10504
+
+registers:
+  input:
+    # ── Zone 1 ──
+    - address: 0
+      name: "Zone 1 Temperature"
+      datatype: FLOAT32
+      initial_value: 72.5
+      behavior:
+        type: sine_wave
+        center: 72.0
+        amplitude: 3.0
+        period: 7200
+
+    - address: 2
+      name: "Zone 1 Humidity"
+      datatype: FLOAT32
+      initial_value: 45.0
+      behavior:
+        type: random_walk
+        center: 45.0
+        step_size: 1.0
+        min: 30.0
+        max: 65.0
+
+    - address: 4
+      name: "Zone 1 CO2"
+      datatype: FLOAT32
+      initial_value: 450.0
+      behavior:
+        type: sine_wave
+        center: 500.0
+        amplitude: 200.0
+        period: 3600
+
+    # ── Zone 2 ──
+    - address: 10
+      name: "Zone 2 Temperature"
+      datatype: FLOAT32
+      initial_value: 71.0
+      behavior:
+        type: sine_wave
+        center: 71.0
+        amplitude: 2.5
+        period: 7200
+
+    - address: 12
+      name: "Zone 2 Humidity"
+      datatype: FLOAT32
+      initial_value: 48.0
+      behavior:
+        type: random_walk
+        center: 48.0
+        step_size: 1.0
+        min: 30.0
+        max: 65.0
+
+    - address: 14
+      name: "Zone 2 CO2"
+      datatype: FLOAT32
+      initial_value: 480.0
+      behavior:
+        type: sine_wave
+        center: 520.0
+        amplitude: 250.0
+        period: 3600
+
+    # ── Building pressure ──
+    - address: 20
+      name: "Building Static Pressure"
+      datatype: FLOAT32
+      initial_value: 0.05
+      behavior:
+        type: random_walk
+        center: 0.05
+        step_size: 0.005
+        min: 0.01
+        max: 0.10
+
+    - address: 22
+      name: "Outdoor Temperature"
+      datatype: FLOAT32
+      initial_value: 85.0
+      behavior:
+        type: sine_wave
+        center: 82.0
+        amplitude: 10.0
+        period: 86400
+
+    - address: 24
+      name: "Outdoor Humidity"
+      datatype: FLOAT32
+      initial_value: 60.0
+      behavior:
+        type: sine_wave
+        center: 55.0
+        amplitude: 20.0
+        period: 86400
+
+  holding:
+    - address: 0
+      name: "Temp Offset Zone 1"
+      datatype: FLOAT32
+      initial_value: 0.0
+
+    - address: 2
+      name: "Temp Offset Zone 2"
+      datatype: FLOAT32
+      initial_value: 0.0
+
+    - address: 4
+      name: "CO2 Calibration Factor"
+      datatype: FLOAT32
+      initial_value: 1.0
