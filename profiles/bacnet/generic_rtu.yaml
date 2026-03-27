@@ -13,7 +13,7 @@ objects:
     behavior:
       type: sine_wave
       center: 55.0
-      amplitude: 3.0
+      amplitude: 7.0
       period: 3600
 
   - object_type: analog-input
@@ -24,7 +24,7 @@ objects:
     behavior:
       type: sine_wave
       center: 74.0
-      amplitude: 2.0
+      amplitude: 5.0
       period: 7200
 
   - object_type: analog-input
@@ -57,9 +57,9 @@ objects:
     behavior:
       type: random_walk
       center: 54.0
-      step_size: 0.5
-      min: 50.0
-      max: 58.0
+      step_size: 2.0
+      min: 46.0
+      max: 62.0
 
   # ── Commands ──
   - object_type: analog-output
@@ -148,3 +148,20 @@ objects:
     name: "Operating Mode"
     present_value: 3
     description: "1=Off 2=Cool1 3=Cool2 4=Heat 5=Econ 6=Auto"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 6
+          weight: 35
+        - value: 2
+          weight: 20
+        - value: 3
+          weight: 15
+        - value: 4
+          weight: 15
+        - value: 5
+          weight: 10
+        - value: 1
+          weight: 5
+      hold_min: 600
+      hold_max: 1800

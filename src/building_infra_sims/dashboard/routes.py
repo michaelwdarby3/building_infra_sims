@@ -254,7 +254,13 @@ async def api_devices_partial(request: Request):
 
 
 @router.get("/api/telemetry/history")
-async def api_telemetry_history(request: Request, source: str = "auto"):
+async def api_telemetry_history(
+    request: Request,
+    source: str = "auto",
+    minutes: int = 60,
+    device: str | None = None,
+    point: str | None = None,
+):
     """JSON time-series data for charts.
 
     source: "local" (recorder), "gateway" (Skybox SQL), or "auto" (local first, gateway fallback).
@@ -265,10 +271,32 @@ async def api_telemetry_history(request: Request, source: str = "auto"):
     used_source = "local"
 
     if source in ("local", "auto"):
-        rows = state.recorder.get_history(minutes=60)
+        rows = state.recorder.get_history(minutes=minutes, device=device, point=point)
 
     if not rows and source in ("gateway", "auto"):
-        rows = await state.fetch_telemetry_history(minutes=60)
+        rows = await state.fetch_telemetry_history(minutes=minutes)
         used_source = "gateway"
 
     return {"rows": rows, "count": len(rows), "source": used_source}
+
+
+@router.get("/api/telemetry/sources")
+async def api_telemetry_sources(request: Request):
+    """List available data sources (device+point combos) from the recorder."""
+    state = _get_state(request)
+    rows = state.recorder.get_latest()
+    sources: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for r in rows:
+        key = (r["device"], r["point"])
+        if key not in seen:
+            seen.add(key)
+            sources.append({
+                "device": r["device"],
+                "point": r["point"],
+                "units": r.get("units", ""),
+                "protocol": r.get("protocol", ""),
+                "value": r.get("value"),
+            })
+    sources.sort(key=lambda s: (s["device"], s["point"]))
+    return {"sources": sources, "count": len(sources)}

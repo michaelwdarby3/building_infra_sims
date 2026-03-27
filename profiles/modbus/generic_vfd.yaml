@@ -54,9 +54,9 @@ registers:
       behavior:
         type: random_walk
         center: 380.0
-        step_size: 2.0
-        min: 370.0
-        max: 395.0
+        step_size: 5.0
+        min: 360.0
+        max: 400.0
 
     - address: 14
       name: "Output Power kW"
@@ -77,9 +77,9 @@ registers:
       behavior:
         type: random_walk
         center: 540.0
-        step_size: 3.0
-        min: 520.0
-        max: 560.0
+        step_size: 8.0
+        min: 510.0
+        max: 570.0
 
     # ── Thermal ──
     - address: 20
@@ -90,9 +90,9 @@ registers:
       behavior:
         type: random_walk
         center: 45.0
-        step_size: 1.0
-        min: 30.0
-        max: 70.0
+        step_size: 3.0
+        min: 25.0
+        max: 75.0
 
     - address: 22
       name: "Motor Temperature"
@@ -102,9 +102,9 @@ registers:
       behavior:
         type: random_walk
         center: 55.0
-        step_size: 1.5
-        min: 35.0
-        max: 80.0
+        step_size: 4.0
+        min: 30.0
+        max: 85.0
 
     # ── Counters ──
     - address: 30
@@ -133,15 +133,54 @@ registers:
       datatype: UINT16
       unit: status
       initial_value: 7
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 7
+            weight: 85
+          - value: 3
+            weight: 8
+          - value: 1
+            weight: 5
+          - value: 0
+            weight: 2
+        hold_min: 600
+        hold_max: 3600
 
     - address: 1
       name: "Fault Code"
       datatype: UINT16
       unit: code
       initial_value: 0
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 95
+          - value: 2
+            weight: 2
+          - value: 4
+            weight: 2
+          - value: 8
+            weight: 1
+        hold_min: 1800
+        hold_max: 7200
 
     - address: 2
       name: "Warning Code"
       datatype: UINT16
       unit: code
       initial_value: 0
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 85
+          - value: 1
+            weight: 5
+          - value: 2
+            weight: 5
+          - value: 4
+            weight: 5
+        hold_min: 900
+        hold_max: 3600

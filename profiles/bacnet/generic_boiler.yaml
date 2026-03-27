@@ -14,7 +14,7 @@ objects:
     behavior:
       type: random_walk
       center: 160.0
-      step_size: 1.0
+      step_size: 3.0
       min: 140.0
       max: 180.0
 
@@ -26,7 +26,7 @@ objects:
     behavior:
       type: random_walk
       center: 140.0
-      step_size: 0.8
+      step_size: 2.5
       min: 120.0
       max: 155.0
 
@@ -38,7 +38,7 @@ objects:
     behavior:
       type: random_walk
       center: 350.0
-      step_size: 5.0
+      step_size: 15.0
       min: 200.0
       max: 450.0
 
@@ -50,7 +50,7 @@ objects:
     behavior:
       type: random_walk
       center: 15.0
-      step_size: 0.3
+      step_size: 1.0
       min: 10.0
       max: 20.0
 
@@ -97,15 +97,36 @@ objects:
     name: "Pump Status"
     present_value: active
     description: "Circulating pump running"
+    behavior:
+      type: binary_toggle
+      on_duration: 3000
+      off_duration: 300
 
   - object_type: binary-value
     instance: 1
     name: "Lockout Alarm"
     present_value: inactive
     description: "Boiler safety lockout"
+    behavior:
+      type: binary_toggle
+      on_duration: 120
+      off_duration: 43200
 
   - object_type: multi-state-value
     instance: 1
     name: "Operating Stage"
     present_value: 2
     description: "1=Off 2=Low Fire 3=High Fire 4=Lockout"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 2
+          weight: 50
+        - value: 3
+          weight: 30
+        - value: 1
+          weight: 18
+        - value: 4
+          weight: 2
+      hold_min: 600
+      hold_max: 2400

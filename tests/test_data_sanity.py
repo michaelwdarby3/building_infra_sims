@@ -2,8 +2,6 @@
 
 These tests load profile YAMLs, run their behaviors for simulated time (no
 network required), and check that the resulting values make physical sense.
-
-Tests marked xfail document known realism bugs that will be fixed in Step 4.
 """
 
 import math
@@ -12,6 +10,7 @@ import pytest
 import yaml
 
 from building_infra_sims.behaviors.base import (
+    WeightedChoice,
     _DeferredBehavior,
     create_behavior,
     resolve_deferred,
@@ -290,3 +289,157 @@ class TestCO2Range:
                 continue
             for v in vals[name]:
                 assert 250.0 <= v <= 2500.0, f"{name} = {v:.0f} ppm is outside reasonable range"
+
+
+# ── WeightedChoice behavior tests ────────────────────────────────────────
+
+
+class TestWeightedChoice:
+    def test_returns_only_valid_values(self):
+        """WeightedChoice should only return values from the choices list."""
+        wc = WeightedChoice(
+            choices=[{"value": 1, "weight": 50}, {"value": 2, "weight": 30}, {"value": 3, "weight": 20}],
+            hold_min=0.1,
+            hold_max=0.2,
+        )
+        valid = {1, 2, 3}
+        for i in range(1000):
+            v = wc.update(i * 0.5)
+            assert v in valid, f"Got unexpected value {v}"
+
+    def test_weight_distribution(self):
+        """Heavily weighted values should appear more often."""
+        wc = WeightedChoice(
+            choices=[{"value": "common", "weight": 90}, {"value": "rare", "weight": 10}],
+            hold_min=0.001,
+            hold_max=0.002,
+        )
+        counts = {"common": 0, "rare": 0}
+        for i in range(10000):
+            v = wc.update(i * 0.01)
+            counts[v] += 1
+        # "common" should be >70% of occurrences (very conservative threshold)
+        assert counts["common"] > counts["rare"] * 3, (
+            f"Expected 'common' much more frequent: {counts}"
+        )
+
+    def test_holds_value_with_long_hold(self):
+        """With very long hold times, value should not change in short elapsed range."""
+        wc = WeightedChoice(
+            choices=[{"value": 10}, {"value": 20}],
+            hold_min=999999.0,
+            hold_max=999999.0,
+        )
+        first = wc.update(0)
+        for i in range(100):
+            assert wc.update(i * 1.0) == first
+
+    def test_integer_type_preserved(self):
+        """Integer choice values should come back as int, not float."""
+        wc = WeightedChoice(
+            choices=[{"value": 1}, {"value": 2}, {"value": 3}],
+            hold_min=0.01,
+            hold_max=0.02,
+        )
+        for i in range(100):
+            v = wc.update(i * 0.1)
+            assert isinstance(v, int), f"Expected int, got {type(v).__name__}: {v}"
+
+    def test_string_type_preserved(self):
+        """String choice values should come back as str."""
+        wc = WeightedChoice(
+            choices=[{"value": "active"}, {"value": "inactive"}],
+            hold_min=0.01,
+            hold_max=0.02,
+        )
+        for i in range(100):
+            v = wc.update(i * 0.1)
+            assert isinstance(v, str), f"Expected str, got {type(v).__name__}: {v}"
+
+
+# ── Multi-state value range tests ────────────────────────────────────────
+
+
+class TestMultiStateValues:
+    """Multi-state values must only produce valid state indices."""
+
+    @pytest.mark.parametrize("profile_path,point_name,max_state", [
+        ("profiles/bacnet/generic_ahu.yaml", "Operating Mode", 5),
+        ("profiles/bacnet/generic_boiler.yaml", "Operating Stage", 4),
+        ("profiles/bacnet/generic_chiller.yaml", "Operating Mode", 5),
+        ("profiles/bacnet/generic_cooling_tower.yaml", "Operating Mode", 4),
+        ("profiles/bacnet/generic_heat_pump.yaml", "Defrost Mode", 3),
+        ("profiles/bacnet/generic_heat_pump.yaml", "Operating Mode", 5),
+        ("profiles/bacnet/generic_lighting_controller.yaml", "Schedule Mode", 4),
+        ("profiles/bacnet/generic_rtu.yaml", "Operating Mode", 6),
+        ("profiles/bacnet/generic_fcu.yaml", "Fan Speed Mode", 5),
+        ("profiles/bacnet/generic_fcu.yaml", "Operating Mode", 4),
+        ("profiles/bacnet/generic_dhw.yaml", "Operating Mode", 4),
+        ("profiles/bacnet/generic_meter.yaml", "Alarm Status", 3),
+        ("profiles/bacnet/generic_fire_alarm_panel.yaml", "Panel Status", 5),
+    ])
+    def test_multi_state_in_range(self, profile_path, point_name, max_state):
+        vals = run_behaviors(profile_path, steps=200, interval=10.0)
+        for v in vals[point_name]:
+            assert isinstance(v, int), f"{point_name}: expected int, got {type(v).__name__}: {v}"
+            assert 1 <= v <= max_state, f"{point_name}: value {v} outside [1, {max_state}]"
+
+
+# ── Binary point value tests ─────────────────────────────────────────────
+
+
+class TestBinaryPointValues:
+    """Binary points must produce 'active' or 'inactive' strings."""
+
+    @pytest.mark.parametrize("profile_path,point_name", [
+        ("profiles/bacnet/generic_ahu.yaml", "Freeze Alarm"),
+        ("profiles/bacnet/generic_ahu.yaml", "Filter Alarm"),
+        ("profiles/bacnet/generic_boiler.yaml", "Lockout Alarm"),
+        ("profiles/bacnet/generic_boiler.yaml", "Pump Status"),
+        ("profiles/bacnet/generic_chiller.yaml", "General Alarm"),
+        ("profiles/bacnet/generic_chiller.yaml", "Chilled Water Flow"),
+        ("profiles/bacnet/generic_cooling_tower.yaml", "Low Water Level"),
+        ("profiles/bacnet/generic_heat_pump.yaml", "Reversing Valve"),
+        ("profiles/bacnet/generic_lighting_controller.yaml", "Override Active"),
+        ("profiles/bacnet/generic_fcu.yaml", "Window Contact"),
+        ("profiles/bacnet/generic_dhw.yaml", "Recirc Pump Status"),
+        ("profiles/bacnet/generic_dhw.yaml", "High Limit Alarm"),
+        ("profiles/bacnet/generic_dhw.yaml", "Low Temp Alarm"),
+        ("profiles/bacnet/generic_meter.yaml", "Meter Online"),
+        ("profiles/bacnet/generic_fire_alarm_panel.yaml", "Zone 1 Alarm"),
+        ("profiles/bacnet/generic_fire_alarm_panel.yaml", "Trouble Condition"),
+        ("profiles/bacnet/generic_fire_alarm_panel.yaml", "Supervisory Condition"),
+    ])
+    def test_binary_produces_valid_strings(self, profile_path, point_name):
+        vals = run_behaviors(profile_path, steps=100, interval=5.0)
+        for v in vals[point_name]:
+            assert v in ("active", "inactive"), (
+                f"{point_name}: expected 'active'/'inactive', got {v!r}"
+            )
+
+
+# ── Modbus status register tests ─────────────────────────────────────────
+
+
+class TestModbusStatusRegisters:
+    """Modbus UINT16 status/code registers must produce non-negative integers."""
+
+    @pytest.mark.parametrize("profile_path,point_name", [
+        ("profiles/modbus/generic_vfd.yaml", "Drive Status Word"),
+        ("profiles/modbus/generic_vfd.yaml", "Fault Code"),
+        ("profiles/modbus/generic_vfd.yaml", "Warning Code"),
+        ("profiles/modbus/generic_power_meter.yaml", "Device Status"),
+        ("profiles/modbus/generic_power_meter.yaml", "Error Code"),
+        ("profiles/modbus/generic_energy_meter_demand.yaml", "Meter Status"),
+        ("profiles/modbus/generic_energy_meter_demand.yaml", "Error Flags"),
+        ("profiles/modbus/generic_hvac_controller.yaml", "Controller Status"),
+        ("profiles/modbus/generic_hvac_controller.yaml", "Alarm Code"),
+        ("profiles/modbus/generic_exhaust_fan.yaml", "Motor Status"),
+        ("profiles/modbus/generic_exhaust_fan.yaml", "Fault Code"),
+        ("profiles/modbus/generic_pump.yaml", "Status"),
+    ])
+    def test_status_is_valid_uint16(self, profile_path, point_name):
+        vals = run_behaviors(profile_path, steps=200, interval=10.0)
+        for v in vals[point_name]:
+            assert isinstance(v, int), f"{point_name}: expected int, got {type(v).__name__}: {v}"
+            assert 0 <= v <= 65535, f"{point_name}: value {v} outside UINT16 range"

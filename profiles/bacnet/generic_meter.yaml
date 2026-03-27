@@ -14,9 +14,9 @@ objects:
     behavior:
       type: random_walk
       center: 120.0
-      step_size: 0.3
-      min: 118.0
-      max: 122.0
+      step_size: 1.0
+      min: 115.0
+      max: 125.0
 
   - object_type: analog-input
     instance: 2
@@ -26,9 +26,9 @@ objects:
     behavior:
       type: random_walk
       center: 120.0
-      step_size: 0.3
-      min: 118.0
-      max: 122.0
+      step_size: 1.0
+      min: 115.0
+      max: 125.0
 
   - object_type: analog-input
     instance: 3
@@ -38,9 +38,9 @@ objects:
     behavior:
       type: random_walk
       center: 120.0
-      step_size: 0.3
-      min: 118.0
-      max: 122.0
+      step_size: 1.0
+      min: 115.0
+      max: 125.0
 
   # ── Current (120° phase offsets for realistic 3-phase) ──
   - object_type: analog-input
@@ -99,7 +99,7 @@ objects:
     behavior:
       type: sine_wave
       center: 1.0
-      amplitude: 0.8
+      amplitude: 1.5
       period: 3600
 
   - object_type: analog-input
@@ -110,8 +110,8 @@ objects:
     behavior:
       type: random_walk
       center: 0.95
-      step_size: 0.01
-      min: 0.85
+      step_size: 0.03
+      min: 0.82
       max: 1.0
 
   - object_type: analog-input
@@ -122,9 +122,9 @@ objects:
     behavior:
       type: random_walk
       center: 60.0
-      step_size: 0.005
-      min: 59.95
-      max: 60.05
+      step_size: 0.015
+      min: 59.90
+      max: 60.10
 
   # ── Energy (accumulating) ──
   - object_type: analog-input
@@ -143,9 +143,24 @@ objects:
     name: "Meter Online"
     present_value: active
     description: "Meter communication status"
+    behavior:
+      type: binary_toggle
+      on_duration: 86400
+      off_duration: 60
 
   - object_type: multi-state-value
     instance: 1
     name: "Alarm Status"
     present_value: 1
     description: "1=Normal 2=Warning 3=Alarm"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 1
+          weight: 90
+        - value: 2
+          weight: 8
+        - value: 3
+          weight: 2
+      hold_min: 1800
+      hold_max: 7200

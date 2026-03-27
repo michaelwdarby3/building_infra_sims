@@ -166,6 +166,30 @@ class DerivedWetBulb(ValueBehavior):
         return wb_c * 9.0 / 5.0 + 32.0
 
 
+class WeightedChoice(ValueBehavior):
+    """Randomly selects from weighted discrete values, holding each for a duration.
+
+    Parameters:
+        choices: list of dicts, each with "value" (any) and optional "weight" (float, default 1.0)
+        hold_min: minimum seconds to hold a value before re-rolling (default 300)
+        hold_max: maximum seconds to hold a value before re-rolling (default 1800)
+    """
+
+    def __init__(self, choices: list[dict], hold_min: float = 300.0, hold_max: float = 1800.0):
+        self.values = [c["value"] for c in choices]
+        self.weights = [c.get("weight", 1.0) for c in choices]
+        self.hold_min = hold_min
+        self.hold_max = hold_max
+        self._current = random.choices(self.values, weights=self.weights, k=1)[0]
+        self._next_change = random.uniform(hold_min, hold_max)
+
+    def update(self, elapsed: float) -> Any:
+        if elapsed >= self._next_change:
+            self._current = random.choices(self.values, weights=self.weights, k=1)[0]
+            self._next_change = elapsed + random.uniform(self.hold_min, self.hold_max)
+        return self._current
+
+
 class DeadbandSwitch(ValueBehavior):
     """Outputs a value when source crosses a threshold, zero otherwise.
 
@@ -245,6 +269,13 @@ def create_behavior(config: dict[str, Any]) -> ValueBehavior:
             off_value=config.get("off_value", "inactive"),
             on_duration=config.get("on_duration", 300.0),
             off_duration=config.get("off_duration", 300.0),
+        )
+
+    elif behavior_type == "weighted_choice":
+        return WeightedChoice(
+            choices=config["choices"],
+            hold_min=config.get("hold_min", 300.0),
+            hold_max=config.get("hold_max", 1800.0),
         )
 
     elif behavior_type in ("dew_point", "wet_bulb", "deadband_switch"):

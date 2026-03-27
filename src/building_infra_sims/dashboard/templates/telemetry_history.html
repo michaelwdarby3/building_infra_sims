@@ -3,126 +3,582 @@
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+<style>
+    .chart-container {
+        position: relative;
+        background: var(--pico-card-background-color);
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .chart-container canvas { max-height: 220px; }
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.4rem;
+    }
+    .chart-header h4 { margin: 0; font-size: 0.9rem; }
+    .chart-actions { display: flex; gap: 0.3rem; }
+    .chart-actions button {
+        padding: 0.15rem 0.5rem;
+        font-size: 0.75rem;
+        margin: 0;
+    }
+    .controls-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .controls-bar label { margin: 0; font-size: 0.85rem; }
+    .controls-bar select, .controls-bar input {
+        margin: 0;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    /* Compare section */
+    .compare-section { margin-bottom: 1.5rem; }
+    .compare-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+    .compare-header h3 { margin: 0; font-size: 1.1rem; }
+    .compare-add-controls {
+        display: flex;
+        gap: 0.3rem;
+        align-items: center;
+    }
+    .compare-add-controls select {
+        margin: 0;
+        padding: 0.25rem 0.4rem;
+        font-size: 0.8rem;
+        max-width: 300px;
+    }
+    .compare-add-controls button {
+        margin: 0;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
+    }
+    .compare-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-bottom: 0.5rem;
+    }
+    .compare-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #fff;
+        cursor: default;
+    }
+    .compare-badge .remove {
+        cursor: pointer;
+        opacity: 0.7;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .compare-badge .remove:hover { opacity: 1; }
+    .compare-chart-wrapper { display: none; }
+    .compare-chart-wrapper canvas { max-height: 300px; }
+
+    /* Source grid */
+    .grid-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .grid-section-header h3 { margin: 0; font-size: 1.1rem; }
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 0.75rem;
+    }
+    @media (max-width: 500px) {
+        .charts-grid { grid-template-columns: 1fr; }
+    }
+    .mini-chart canvas { max-height: 180px; }
+    .mini-value {
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: var(--pico-muted-color);
+    }
+    .no-data {
+        text-align: center;
+        padding: 2rem;
+        color: var(--pico-muted-color);
+    }
+    .in-compare .chart-actions .add-compare-btn {
+        background: var(--pico-primary-background);
+        color: var(--pico-primary-inverse);
+        border-color: var(--pico-primary-background);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <h2>Telemetry History</h2>
-<p>Recent sensor readings from local simulators or gateway database.</p>
 
-<div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-    <fieldset role="group" style="margin: 0;">
-        <button id="btn-local" class="outline" onclick="setSource('local')">Local</button>
-        <button id="btn-gateway" class="outline" onclick="setSource('gateway')">Gateway</button>
-        <button id="btn-auto" onclick="setSource('auto')">Auto</button>
-    </fieldset>
-    <label for="point-filter" style="margin: 0;">
-        <input type="text" id="point-filter" placeholder="Filter by point name..." style="margin: 0;">
+<div class="controls-bar">
+    <label>
+        Time range:
+        <select id="time-range" onchange="onSettingsChange()">
+            <option value="5">Last 5 min</option>
+            <option value="15">Last 15 min</option>
+            <option value="30" selected>Last 30 min</option>
+            <option value="60">Last 1 hour</option>
+            <option value="120">Last 2 hours</option>
+        </select>
     </label>
-    <small id="source-label" style="color: var(--pico-muted-color);"></small>
+    <label>
+        <input type="text" id="search-filter" placeholder="Filter sources..." oninput="filterGrid()">
+    </label>
+    <label>
+        <input type="checkbox" id="auto-refresh" checked onchange="toggleAutoRefresh()">
+        Auto-refresh (15s)
+    </label>
+    <small id="status-label" style="color: var(--pico-muted-color);"></small>
 </div>
 
-<canvas id="historyChart" style="max-height: 400px;"></canvas>
+<!-- ── Compare Chart Section ── -->
+<div class="compare-section">
+    <div class="compare-header">
+        <h3>Compare</h3>
+        <div class="compare-add-controls">
+            <select id="compare-select"><option value="">Add a source...</option></select>
+            <button class="outline" onclick="addSelectedToCompare()">Add</button>
+            <button class="outline secondary" onclick="clearCompare()">Clear</button>
+        </div>
+    </div>
+    <div id="compare-badges" class="compare-badges"></div>
+    <div id="compare-chart-wrapper" class="compare-chart-wrapper chart-container">
+        <canvas id="compare-chart"></canvas>
+    </div>
+    <div id="compare-empty" class="no-data" style="padding: 1rem; font-size: 0.85rem;">
+        Add sources using the dropdown above or the <strong>+ Compare</strong> button on any chart below.
+    </div>
+</div>
 
-<details>
-    <summary>Raw data table</summary>
-    <div id="history-table"></div>
-</details>
+<!-- ── Individual Charts Grid ── -->
+<div class="grid-section-header">
+    <h3>All Sources <small id="source-count" style="font-weight: normal; color: var(--pico-muted-color);"></small></h3>
+</div>
+<div id="charts-grid" class="charts-grid">
+    <p class="no-data" id="grid-loading">Loading data sources...</p>
+</div>
 
 <script>
-let chart = null;
-let currentSource = 'auto';
+const COLORS = [
+    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+    '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+    '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
+];
 
-function setSource(src) {
-    currentSource = src;
-    document.querySelectorAll('fieldset[role="group"] button').forEach(b => b.classList.add('outline'));
-    document.getElementById('btn-' + src).classList.remove('outline');
-    loadHistory();
+let sources = [];
+let gridCharts = {};        // key -> Chart instance
+let compareChart = null;
+let compareSources = [];    // [{device, point, color, key}]
+let refreshInterval = null;
+
+function sourceKey(device, point) { return device + '||' + point; }
+
+// ── Source loading ──────────────────────────────────────────────────
+
+async function loadSources() {
+    try {
+        const resp = await fetch('/api/telemetry/sources');
+        const data = await resp.json();
+        sources = data.sources || [];
+        populateCompareSelect();
+        buildGrid();
+        document.getElementById('status-label').textContent = sources.length + ' sources';
+        document.getElementById('source-count').textContent = '(' + sources.length + ')';
+    } catch (e) {
+        document.getElementById('status-label').textContent = 'Error loading sources';
+    }
 }
 
-async function loadHistory() {
-    const resp = await fetch('/api/telemetry/history?source=' + currentSource);
-    const data = await resp.json();
-    const rows = data.rows;
+function populateCompareSelect() {
+    const sel = document.getElementById('compare-select');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Add a source...</option>';
+    for (const s of sources) {
+        const key = sourceKey(s.device, s.point);
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = s.device + ' / ' + s.point;
+        sel.appendChild(opt);
+    }
+    sel.value = current || '';
+}
 
-    document.getElementById('source-label').textContent =
-        data.count + ' rows from ' + data.source;
+// ── Grid of individual charts ───────────────────────────────────────
 
-    if (!rows || rows.length === 0) {
-        document.getElementById('history-table').innerHTML = '<p><em>No historical data yet.</em></p>';
-        if (chart) { chart.destroy(); chart = null; }
+function buildGrid() {
+    const grid = document.getElementById('charts-grid');
+    grid.innerHTML = '';
+
+    if (sources.length === 0) {
+        grid.innerHTML = '<p class="no-data">No data sources available. Start some devices first.</p>';
         return;
     }
 
-    // Build series grouped by device+point
-    const series = {};
-    for (const row of rows) {
-        const name = (row.device ? row.device + ' / ' : '') + (row.point || row.name || 'unknown');
-        if (!series[name]) series[name] = [];
-        const ts = row.timestamp || row.time || 0;
-        const val = parseFloat(row.value ?? row.data ?? 0);
-        if (!isNaN(val)) {
-            series[name].push({ x: ts, y: val });
-        }
+    // Group by device
+    const grouped = {};
+    for (const s of sources) {
+        if (!grouped[s.device]) grouped[s.device] = [];
+        grouped[s.device].push(s);
     }
 
-    const colors = [
-        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-        '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
-    ];
+    let colorIdx = 0;
+    for (const [device, points] of Object.entries(grouped)) {
+        for (const s of points) {
+            const key = sourceKey(s.device, s.point);
+            const color = COLORS[colorIdx % COLORS.length];
+            colorIdx++;
 
-    const datasets = Object.entries(series).map(([name, points], i) => ({
-        label: name,
-        data: points.sort((a, b) => a.x - b.x),
-        borderColor: colors[i % colors.length],
-        backgroundColor: colors[i % colors.length] + '22',
-        borderWidth: 1.5, pointRadius: 0, tension: 0.3,
-    }));
+            const div = document.createElement('div');
+            div.className = 'chart-container mini-chart';
+            div.dataset.sourceKey = key;
+            div.dataset.device = s.device;
+            div.dataset.point = s.point;
+            div.innerHTML = `
+                <div class="chart-header">
+                    <h4>${escHtml(s.point)} <span class="mini-value" data-val-key="${escAttr(key)}">${fmtVal(s.value, s.units)}</span></h4>
+                    <div class="chart-actions">
+                        <button class="outline add-compare-btn" onclick="addToCompare('${escAttr(key)}')">+ Compare</button>
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:var(--pico-muted-color); margin-bottom:0.3rem;">${escHtml(s.device)}</div>
+                <canvas></canvas>
+            `;
+            grid.appendChild(div);
 
-    const ctx = document.getElementById('historyChart').getContext('2d');
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: { datasets },
-        options: {
-            responsive: true,
-            interaction: { intersect: false, mode: 'index' },
-            scales: {
-                x: { type: 'linear', title: { display: true, text: 'Time (epoch)' } },
-                y: { title: { display: true, text: 'Value' } },
-            },
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
-        },
-    });
+            // Create chart (data loaded async)
+            const canvas = div.querySelector('canvas');
+            const chart = new Chart(canvas, makeChartConfig([{
+                label: s.point + (s.units ? ' (' + s.units + ')' : ''),
+                data: [],
+                borderColor: color,
+            }], false));
+            gridCharts[key] = { chart, device: s.device, point: s.point, color };
 
-    // Raw data table
-    const columns = Object.keys(rows[0]);
-    let html = '<table><thead><tr>';
-    for (const col of columns) html += '<th>' + col + '</th>';
-    html += '</tr></thead><tbody>';
-    for (const row of rows.slice(0, 100)) {
-        html += '<tr>';
-        for (const col of columns) {
-            let v = row[col] ?? '';
-            if (typeof v === 'number' && !Number.isInteger(v)) v = v.toFixed(4);
-            html += '<td>' + v + '</td>';
+            // Load data for this chart
+            loadChartData(key);
         }
-        html += '</tr>';
     }
-    html += '</tbody></table>';
-    if (rows.length > 100) html += '<p><em>Showing 100 of ' + rows.length + ' rows</em></p>';
-    document.getElementById('history-table').innerHTML = html;
 }
 
-document.getElementById('point-filter').addEventListener('input', function() {
-    if (!chart) return;
-    const filter = this.value.toLowerCase();
-    chart.data.datasets.forEach(ds => { ds.hidden = filter && !ds.label.toLowerCase().includes(filter); });
-    chart.update();
-});
+async function loadChartData(key) {
+    const info = gridCharts[key];
+    if (!info) return;
+    const minutes = parseInt(document.getElementById('time-range').value);
+    const params = new URLSearchParams({
+        source: 'local', minutes, device: info.device, point: info.point,
+    });
+    try {
+        const resp = await fetch('/api/telemetry/history?' + params);
+        const data = await resp.json();
+        const points = (data.rows || []).map(r => ({
+            x: r.timestamp * 1000,
+            y: r.value,
+        })).sort((a, b) => a.x - b.x);
+        info.chart.data.datasets[0].data = points;
+        info.chart.update();
+    } catch (e) { /* ignore */ }
+}
 
-// Initial load and auto-refresh every 15s
-loadHistory();
-setInterval(loadHistory, 15000);
+function filterGrid() {
+    const filter = (document.getElementById('search-filter').value || '').toLowerCase();
+    const grid = document.getElementById('charts-grid');
+    let visible = 0;
+    for (const div of grid.querySelectorAll('.mini-chart')) {
+        const text = (div.dataset.device + ' ' + div.dataset.point).toLowerCase();
+        const show = !filter || text.includes(filter);
+        div.style.display = show ? '' : 'none';
+        if (show) visible++;
+    }
+    document.getElementById('source-count').textContent =
+        filter ? '(' + visible + '/' + sources.length + ')' : '(' + sources.length + ')';
+}
+
+// ── Compare chart ───────────────────────────────────────────────────
+
+function addSelectedToCompare() {
+    const sel = document.getElementById('compare-select');
+    if (sel.value) {
+        addToCompare(sel.value);
+        sel.value = '';
+    }
+}
+
+function addToCompare(key) {
+    if (compareSources.find(s => s.key === key)) return;
+    const [device, point] = key.split('||');
+    const color = COLORS[compareSources.length % COLORS.length];
+    compareSources.push({ device, point, key, color });
+    updateCompareUI();
+    refreshCompareChart();
+
+    // Highlight the grid card
+    const card = document.querySelector(`.mini-chart[data-source-key="${CSS.escape(key)}"]`);
+    if (card) card.classList.add('in-compare');
+}
+
+function removeFromCompare(key) {
+    compareSources = compareSources.filter(s => s.key !== key);
+    // Reassign colors
+    compareSources.forEach((s, i) => s.color = COLORS[i % COLORS.length]);
+    updateCompareUI();
+
+    const card = document.querySelector(`.mini-chart[data-source-key="${CSS.escape(key)}"]`);
+    if (card) card.classList.remove('in-compare');
+
+    if (compareSources.length === 0) {
+        clearCompare();
+    } else {
+        refreshCompareChart();
+    }
+}
+
+function clearCompare() {
+    compareSources = [];
+    if (compareChart) { compareChart.destroy(); compareChart = null; }
+    document.getElementById('compare-chart-wrapper').style.display = 'none';
+    document.getElementById('compare-empty').style.display = 'block';
+    document.getElementById('compare-badges').innerHTML = '';
+    // Remove all in-compare highlights
+    for (const card of document.querySelectorAll('.in-compare')) {
+        card.classList.remove('in-compare');
+    }
+}
+
+function updateCompareUI() {
+    const badges = document.getElementById('compare-badges');
+    badges.innerHTML = compareSources.map(s =>
+        `<span class="compare-badge" style="background:${s.color};">` +
+        `${escHtml(s.device)} / ${escHtml(s.point)} ` +
+        `<span class="remove" onclick="removeFromCompare('${escAttr(s.key)}')">&times;</span>` +
+        `</span>`
+    ).join('');
+
+    document.getElementById('compare-empty').style.display =
+        compareSources.length > 0 ? 'none' : 'block';
+}
+
+async function refreshCompareChart() {
+    if (compareSources.length === 0) return;
+
+    const minutes = parseInt(document.getElementById('time-range').value);
+    const allData = [];
+
+    for (const src of compareSources) {
+        const params = new URLSearchParams({
+            source: 'local', minutes, device: src.device, point: src.point,
+        });
+        try {
+            const resp = await fetch('/api/telemetry/history?' + params);
+            const data = await resp.json();
+            const points = (data.rows || []).map(r => ({
+                x: r.timestamp * 1000,
+                y: r.value,
+            })).sort((a, b) => a.x - b.x);
+            const units = data.rows?.[0]?.units || '';
+            allData.push({
+                label: src.point + (units ? ' (' + units + ')' : ''),
+                data: points,
+                borderColor: src.color,
+            });
+        } catch (e) {
+            allData.push({ label: src.point, data: [], borderColor: src.color });
+        }
+    }
+
+    const wrapper = document.getElementById('compare-chart-wrapper');
+    wrapper.style.display = 'block';
+
+    if (compareChart) {
+        // Update in-place
+        while (compareChart.data.datasets.length > allData.length) {
+            compareChart.data.datasets.pop();
+        }
+        for (let i = 0; i < allData.length; i++) {
+            if (i < compareChart.data.datasets.length) {
+                compareChart.data.datasets[i].data = allData[i].data;
+                compareChart.data.datasets[i].label = allData[i].label;
+                compareChart.data.datasets[i].borderColor = allData[i].borderColor;
+                compareChart.data.datasets[i].backgroundColor = allData[i].borderColor + '18';
+            } else {
+                compareChart.data.datasets.push({
+                    ...allData[i],
+                    backgroundColor: allData[i].borderColor + '18',
+                    borderWidth: 1.5, pointRadius: 0, pointHitRadius: 8,
+                    tension: 0.3, fill: false,
+                });
+            }
+        }
+        compareChart.update();
+    } else {
+        const canvas = document.getElementById('compare-chart');
+        compareChart = new Chart(canvas, makeChartConfig(allData, true));
+    }
+}
+
+// ── Chart config helper ─────────────────────────────────────────────
+
+function makeChartConfig(datasets, showLegend) {
+    return {
+        type: 'line',
+        data: {
+            datasets: datasets.map(ds => ({
+                ...ds,
+                backgroundColor: (ds.borderColor || '#3b82f6') + '18',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHitRadius: 8,
+                tension: 0.3,
+                fill: datasets.length === 1,
+            })),
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            interaction: { intersect: false, mode: 'nearest' },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        tooltipFormat: 'HH:mm:ss',
+                        displayFormats: { second: 'HH:mm:ss', minute: 'HH:mm', hour: 'HH:mm' },
+                    },
+                    ticks: { font: { size: 10 }, maxTicksLimit: 8 },
+                },
+                y: {
+                    ticks: { font: { size: 10 } },
+                },
+            },
+            plugins: {
+                legend: {
+                    display: showLegend === true,
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 11 } },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const v = typeof ctx.parsed.y === 'number' ? ctx.parsed.y.toFixed(2) : ctx.parsed.y;
+                            return ctx.dataset.label + ': ' + v;
+                        },
+                    },
+                },
+            },
+        },
+    };
+}
+
+// ── Refresh ─────────────────────────────────────────────────────────
+
+async function refreshAll() {
+    const minutes = parseInt(document.getElementById('time-range').value);
+
+    // Check for new/removed sources
+    try {
+        const resp = await fetch('/api/telemetry/sources');
+        const data = await resp.json();
+        const newSources = data.sources || [];
+        if (newSources.length !== sources.length) {
+            // Rebuild grid if source count changed
+            sources = newSources;
+            populateCompareSelect();
+            // Destroy old charts
+            for (const info of Object.values(gridCharts)) info.chart.destroy();
+            gridCharts = {};
+            buildGrid();
+            document.getElementById('source-count').textContent = '(' + sources.length + ')';
+        } else {
+            sources = newSources;
+            // Update current values in-place
+            for (const s of sources) {
+                const key = sourceKey(s.device, s.point);
+                const el = document.querySelector(`[data-val-key="${CSS.escape(key)}"]`);
+                if (el) el.textContent = fmtVal(s.value, s.units);
+            }
+        }
+        document.getElementById('status-label').textContent = sources.length + ' sources';
+    } catch (e) { /* ignore */ }
+
+    // Refresh individual grid charts
+    for (const [key, info] of Object.entries(gridCharts)) {
+        const params = new URLSearchParams({
+            source: 'local', minutes, device: info.device, point: info.point,
+        });
+        try {
+            const resp = await fetch('/api/telemetry/history?' + params);
+            const data = await resp.json();
+            const points = (data.rows || []).map(r => ({
+                x: r.timestamp * 1000,
+                y: r.value,
+            })).sort((a, b) => a.x - b.x);
+            info.chart.data.datasets[0].data = points;
+            info.chart.update();
+        } catch (e) { /* ignore */ }
+    }
+
+    // Refresh compare chart
+    if (compareSources.length > 0) {
+        await refreshCompareChart();
+    }
+}
+
+function onSettingsChange() {
+    // On time range change, reload all chart data
+    for (const key of Object.keys(gridCharts)) loadChartData(key);
+    if (compareSources.length > 0) refreshCompareChart();
+}
+
+function toggleAutoRefresh() {
+    if (document.getElementById('auto-refresh').checked) {
+        refreshInterval = setInterval(refreshAll, 15000);
+    } else {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+function fmtVal(value, units) {
+    const v = value != null ? (typeof value === 'number' ? value.toFixed(2) : value) : '-';
+    return v + (units ? ' ' + units : '');
+}
+
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function escAttr(s) {
+    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ── Init ────────────────────────────────────────────────────────────
+
+loadSources();
+refreshInterval = setInterval(refreshAll, 15000);
 </script>
 {% endblock %}

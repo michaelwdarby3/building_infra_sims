@@ -299,6 +299,19 @@ class TestPartials:
         assert "rows" in data
         assert "count" in data
 
+    def test_telemetry_history_with_params(self, client):
+        resp = client.get("/api/telemetry/history?minutes=5&source=local")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "rows" in data
+
+    def test_telemetry_sources_empty(self, client):
+        resp = client.get("/api/telemetry/sources")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "sources" in data
+        assert "count" in data
+
     def test_sim_data_partial_empty(self, client):
         resp = client.get("/api/sim-data")
         assert resp.status_code == 200

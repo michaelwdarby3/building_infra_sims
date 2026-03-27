@@ -23,9 +23,9 @@ objects:
     behavior:
       type: random_walk
       center: 55.0
-      step_size: 0.3
-      min: 50.0
-      max: 65.0
+      step_size: 1.5
+      min: 48.0
+      max: 67.0
 
   - type: analog-input
     instance: 3
@@ -35,7 +35,7 @@ objects:
     behavior:
       type: sine_wave
       center: 72.0
-      amplitude: 2.0
+      amplitude: 6.0
       period: 7200
 
   - type: analog-input
@@ -57,9 +57,9 @@ objects:
     behavior:
       type: random_walk
       center: 1.5
-      step_size: 0.05
-      min: 0.5
-      max: 2.5
+      step_size: 0.2
+      min: 0.3
+      max: 2.8
 
   # --- Valve Commands ---
   - type: analog-output
@@ -136,11 +136,19 @@ objects:
     instance: 1
     name: "Freeze Alarm"
     initial_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 28800
 
   - type: binary-value
     instance: 2
     name: "Filter Alarm"
     initial_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 300
+      off_duration: 86400
 
   # --- Operating Mode ---
   - type: multi-state-value
@@ -153,3 +161,18 @@ objects:
       - "Cool"
       - "Heat"
       - "Emergency Heat"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 2
+          weight: 50
+        - value: 3
+          weight: 25
+        - value: 4
+          weight: 15
+        - value: 1
+          weight: 8
+        - value: 5
+          weight: 2
+      hold_min: 900
+      hold_max: 3600

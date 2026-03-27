@@ -12,6 +12,7 @@ from building_infra_sims.behaviors.base import (
     SineWave,
     StaticValue,
     ValueBehavior,
+    WeightedChoice,
     create_behavior,
     resolve_deferred,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "DerivedDewPoint",
     "DerivedWetBulb",
     "DeadbandSwitch",
+    "WeightedChoice",
     "create_behavior",
     "resolve_deferred",
 ]

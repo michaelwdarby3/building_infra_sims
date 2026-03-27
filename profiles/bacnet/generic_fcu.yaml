@@ -13,7 +13,7 @@ objects:
     behavior:
       type: sine_wave
       center: 72.0
-      amplitude: 2.5
+      amplitude: 5.0
       period: 7200
 
   - object_type: analog-input
@@ -24,9 +24,9 @@ objects:
     behavior:
       type: random_walk
       center: 58.0
-      step_size: 1.0
-      min: 52.0
-      max: 95.0
+      step_size: 3.0
+      min: 48.0
+      max: 100.0
 
   - object_type: analog-input
     instance: 3
@@ -93,6 +93,10 @@ objects:
     name: "Window Contact"
     present_value: inactive
     description: "Closed = inactive, Open = active"
+    behavior:
+      type: binary_toggle
+      on_duration: 1800
+      off_duration: 14400
 
   # ── Setpoints ──
   - object_type: analog-value
@@ -113,9 +117,37 @@ objects:
     name: "Fan Speed Mode"
     present_value: 4
     description: "1=Off 2=Low 3=Med 4=High 5=Auto"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 5
+          weight: 40
+        - value: 3
+          weight: 25
+        - value: 4
+          weight: 15
+        - value: 2
+          weight: 12
+        - value: 1
+          weight: 8
+      hold_min: 600
+      hold_max: 1800
 
   - object_type: multi-state-value
     instance: 2
     name: "Operating Mode"
     present_value: 2
     description: "1=Off 2=Cool 3=Heat 4=Auto"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 4
+          weight: 40
+        - value: 2
+          weight: 30
+        - value: 3
+          weight: 20
+        - value: 1
+          weight: 10
+      hold_min: 900
+      hold_max: 3600

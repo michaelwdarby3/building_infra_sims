@@ -35,9 +35,9 @@ registers:
       behavior:
         type: random_walk
         center: 29.92
-        step_size: 0.02
-        min: 29.50
-        max: 30.50
+        step_size: 0.08
+        min: 29.40
+        max: 30.60
 
     - address: 6
       name: "Wind Speed"
@@ -47,9 +47,9 @@ registers:
       behavior:
         type: random_walk
         center: 8.0
-        step_size: 2.0
+        step_size: 4.0
         min: 0.0
-        max: 35.0
+        max: 45.0
 
     - address: 8
       name: "Wind Direction"

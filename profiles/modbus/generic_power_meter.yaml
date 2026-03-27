@@ -13,9 +13,9 @@ registers:
       behavior:
         type: random_walk
         center: 120.0
-        step_size: 0.5
-        min: 118.0
-        max: 122.0
+        step_size: 1.5
+        min: 115.0
+        max: 125.0
 
     - address: 2
       name: "Voltage Phase B"
@@ -25,9 +25,9 @@ registers:
       behavior:
         type: random_walk
         center: 120.0
-        step_size: 0.5
-        min: 118.0
-        max: 122.0
+        step_size: 1.5
+        min: 115.0
+        max: 125.0
 
     - address: 4
       name: "Voltage Phase C"
@@ -37,9 +37,9 @@ registers:
       behavior:
         type: random_walk
         center: 120.0
-        step_size: 0.5
-        min: 118.0
-        max: 122.0
+        step_size: 1.5
+        min: 115.0
+        max: 125.0
 
     - address: 6
       name: "Current Phase A"
@@ -85,8 +85,8 @@ registers:
       behavior:
         type: random_walk
         center: 0.95
-        step_size: 0.01
-        min: 0.85
+        step_size: 0.03
+        min: 0.82
         max: 1.0
 
     - address: 22
@@ -97,9 +97,9 @@ registers:
       behavior:
         type: random_walk
         center: 60.0
-        step_size: 0.01
-        min: 59.95
-        max: 60.05
+        step_size: 0.025
+        min: 59.90
+        max: 60.10
 
     - address: 40
       name: "Total kW"
@@ -120,7 +120,7 @@ registers:
       behavior:
         type: sine_wave
         center: 1.0
-        amplitude: 0.8
+        amplitude: 1.5
         period: 3600
 
     - address: 50
@@ -139,9 +139,31 @@ registers:
       datatype: UINT16
       unit: status
       initial_value: 1
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 1
+            weight: 95
+          - value: 0
+            weight: 3
+          - value: 2
+            weight: 2
+        hold_min: 3600
+        hold_max: 14400
 
     - address: 1
       name: "Error Code"
       datatype: UINT16
       unit: code
       initial_value: 0
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 95
+          - value: 1
+            weight: 3
+          - value: 2
+            weight: 2
+        hold_min: 3600
+        hold_max: 14400

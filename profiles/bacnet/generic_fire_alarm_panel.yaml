@@ -9,61 +9,122 @@ objects:
     instance: 1
     name: "Zone 1 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 14400
 
   - object_type: binary-input
     instance: 2
     name: "Zone 2 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 18000
 
   - object_type: binary-input
     instance: 3
     name: "Zone 3 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 21600
 
   - object_type: binary-input
     instance: 4
     name: "Zone 4 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 25200
 
   - object_type: binary-input
     instance: 5
     name: "Zone 5 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 28800
 
   - object_type: binary-input
     instance: 6
     name: "Zone 6 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 32400
 
   - object_type: binary-input
     instance: 7
     name: "Zone 7 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 36000
 
   - object_type: binary-input
     instance: 8
     name: "Zone 8 Alarm"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 39600
 
   # ── System status ──
   - object_type: binary-input
     instance: 10
     name: "Trouble Condition"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 120
+      off_duration: 28800
 
   - object_type: binary-input
     instance: 11
     name: "Supervisory Condition"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 60
+      off_duration: 43200
 
   - object_type: analog-value
     instance: 1
     name: "Active Alarm Count"
     present_value: 0.0
     units: no-units
+    behavior:
+      type: random_walk
+      center: 0.0
+      step_size: 1.0
+      min: 0.0
+      max: 5.0
 
   - object_type: multi-state-value
     instance: 1
     name: "Panel Status"
     present_value: 1
     description: "1=Normal 2=Alarm 3=Trouble 4=Supervisory 5=Silenced"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 1
+          weight: 90
+        - value: 2
+          weight: 5
+        - value: 3
+          weight: 3
+        - value: 4
+          weight: 1.5
+        - value: 5
+          weight: 0.5
+      hold_min: 600
+      hold_max: 3600

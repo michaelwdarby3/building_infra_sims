@@ -131,6 +131,16 @@ class SkyboxClient:
             "/api/connections/",
             json=connection.model_dump(mode="json"),
         )
+        if resp.status_code == 409:
+            # Stale connection exists — delete it and retry
+            existing = await self.list_connections(search=connection.name)
+            for conn in existing.connections:
+                if conn.name == connection.name:
+                    await self.delete_connection(conn.id)
+            resp = await self._client.post(
+                "/api/connections/",
+                json=connection.model_dump(mode="json"),
+            )
         resp.raise_for_status()
         return Connection.model_validate(resp.json())
 

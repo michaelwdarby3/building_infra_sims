@@ -52,6 +52,8 @@ def pack_value(value: Any, datatype: str) -> list[int]:
 
     if datatype == "BOOL":
         value = 1 if value else 0
+    elif datatype in ("UINT16", "INT16", "UINT32", "INT32", "UINT64", "INT64"):
+        value = int(value)
 
     packed = struct.pack(fmt, value)
     # Convert to list of 16-bit unsigned integers

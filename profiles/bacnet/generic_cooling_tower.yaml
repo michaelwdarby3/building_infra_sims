@@ -13,9 +13,9 @@ objects:
     behavior:
       type: random_walk
       center: 82.0
-      step_size: 0.5
-      min: 75.0
-      max: 90.0
+      step_size: 2.0
+      min: 72.0
+      max: 95.0
 
   - object_type: analog-input
     instance: 2
@@ -25,9 +25,9 @@ objects:
     behavior:
       type: random_walk
       center: 7.0
-      step_size: 0.3
-      min: 4.0
-      max: 12.0
+      step_size: 1.0
+      min: 3.0
+      max: 14.0
 
   - object_type: analog-input
     instance: 3
@@ -50,9 +50,9 @@ objects:
     behavior:
       type: random_walk
       center: 1200.0
-      step_size: 20.0
-      min: 800.0
-      max: 2000.0
+      step_size: 60.0
+      min: 600.0
+      max: 2200.0
 
   - object_type: analog-input
     instance: 11
@@ -62,9 +62,9 @@ objects:
     behavior:
       type: random_walk
       center: 7.2
-      step_size: 0.05
-      min: 6.5
-      max: 8.5
+      step_size: 0.15
+      min: 6.0
+      max: 9.0
 
   - object_type: analog-input
     instance: 12
@@ -75,9 +75,9 @@ objects:
     behavior:
       type: random_walk
       center: 0.15
-      step_size: 0.02
-      min: 0.05
-      max: 0.40
+      step_size: 0.06
+      min: 0.03
+      max: 0.50
 
   # ── Fan control ──
   - object_type: analog-output
@@ -113,9 +113,26 @@ objects:
     instance: 2
     name: "Low Water Level"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 180
+      off_duration: 28800
 
   - object_type: multi-state-value
     instance: 1
     name: "Operating Mode"
     present_value: 2
     description: "1=Off 2=Running 3=Winterized 4=Alarm"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 2
+          weight: 70
+        - value: 1
+          weight: 20
+        - value: 3
+          weight: 8
+        - value: 4
+          weight: 2
+      hold_min: 900
+      hold_max: 3600

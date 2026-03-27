@@ -14,9 +14,9 @@ registers:
       behavior:
         type: random_walk
         center: 277.0
-        step_size: 1.0
-        min: 270.0
-        max: 285.0
+        step_size: 3.0
+        min: 265.0
+        max: 290.0
 
     - address: 2
       name: "Current Avg"
@@ -70,8 +70,8 @@ registers:
       behavior:
         type: random_walk
         center: 0.92
-        step_size: 0.01
-        min: 0.80
+        step_size: 0.03
+        min: 0.75
         max: 1.0
 
     - address: 12
@@ -82,9 +82,9 @@ registers:
       behavior:
         type: random_walk
         center: 60.0
-        step_size: 0.01
-        min: 59.95
-        max: 60.05
+        step_size: 0.025
+        min: 59.90
+        max: 60.10
 
     # ── Energy totals ──
     - address: 20
@@ -148,9 +148,9 @@ registers:
       behavior:
         type: random_walk
         center: 4.5
-        step_size: 0.2
-        min: 1.0
-        max: 10.0
+        step_size: 0.8
+        min: 0.5
+        max: 12.0
 
     - address: 40
       name: "Demand Reset Counter"
@@ -164,12 +164,36 @@ registers:
       datatype: UINT16
       unit: status
       initial_value: 1
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 1
+            weight: 95
+          - value: 0
+            weight: 3
+          - value: 2
+            weight: 2
+        hold_min: 3600
+        hold_max: 14400
 
     - address: 1
       name: "Error Flags"
       datatype: UINT16
       unit: flags
       initial_value: 0
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 92
+          - value: 1
+            weight: 3
+          - value: 2
+            weight: 3
+          - value: 4
+            weight: 2
+        hold_min: 3600
+        hold_max: 14400
 
     - address: 2
       name: "Comm Watchdog"

@@ -86,8 +86,25 @@ objects:
     name: "Schedule Mode"
     present_value: 2
     description: "1=Off 2=Auto 3=Manual 4=Override"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 2
+          weight: 60
+        - value: 3
+          weight: 20
+        - value: 1
+          weight: 12
+        - value: 4
+          weight: 8
+      hold_min: 1800
+      hold_max: 7200
 
   - object_type: binary-value
     instance: 1
     name: "Override Active"
     present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 600
+      off_duration: 7200

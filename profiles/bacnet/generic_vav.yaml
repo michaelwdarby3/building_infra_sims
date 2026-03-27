@@ -14,7 +14,7 @@ objects:
     behavior:
       type: sine_wave
       center: 72.0
-      amplitude: 2.0
+      amplitude: 5.0
       period: 7200
 
   - object_type: analog-input
@@ -26,7 +26,7 @@ objects:
     behavior:
       type: sine_wave
       center: 56.0
-      amplitude: 3.0
+      amplitude: 7.0
       period: 3600
 
   - object_type: analog-input
@@ -38,7 +38,7 @@ objects:
     behavior:
       type: sine_wave
       center: 450.0
-      amplitude: 200.0
+      amplitude: 350.0
       period: 3600
 
   # ── Commanded Outputs ──

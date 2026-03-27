@@ -14,7 +14,7 @@ registers:
       behavior:
         type: sine_wave
         center: 72.0
-        amplitude: 3.0
+        amplitude: 6.0
         period: 7200
 
     - address: 2
@@ -49,7 +49,7 @@ registers:
       behavior:
         type: sine_wave
         center: 71.0
-        amplitude: 2.5
+        amplitude: 6.0
         period: 7200
 
     - address: 12
@@ -84,9 +84,9 @@ registers:
       behavior:
         type: random_walk
         center: 0.05
-        step_size: 0.005
-        min: 0.01
-        max: 0.10
+        step_size: 0.015
+        min: 0.0
+        max: 0.12
 
     - address: 22
       name: "Outdoor Temperature"
@@ -96,7 +96,7 @@ registers:
       behavior:
         type: sine_wave
         center: 82.0
-        amplitude: 10.0
+        amplitude: 15.0
         period: 86400
 
     - address: 24
