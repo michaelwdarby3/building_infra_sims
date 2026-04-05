@@ -211,8 +211,6 @@ def dashboard(
     ),
 ):
     """Launch the web control panel. Optionally pre-load a scenario."""
-    import asyncio
-
     import uvicorn
 
     from building_infra_sims.dashboard.app import create_app
@@ -224,23 +222,19 @@ def dashboard(
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    web_app = create_app()
-
-    # Pre-load a scenario if provided
-    if scenario:
-        async def _preload():
-            state = web_app.state.dashboard
-            await state.load_scenario(scenario)
-            if setup_skybox:
-                await state.register_all()
-
-        asyncio.run(_preload())
-        console.print(f"[bold]Pre-loaded scenario:[/bold] {scenario}")
+    # Preload happens inside uvicorn's event loop (via lifespan handler)
+    # so that Modbus asyncio server tasks stay alive.
+    web_app = create_app(
+        preload_scenario=scenario,
+        preload_setup_skybox=setup_skybox,
+    )
 
     console.print(
         f"\n[bold green]Dashboard running at http://{host}:{port}[/bold green]"
-        f"\n[bold]Press Ctrl+C to stop.[/bold]\n"
     )
+    if scenario:
+        console.print(f"[bold]Pre-loading scenario:[/bold] {scenario}")
+    console.print("[bold]Press Ctrl+C to stop.[/bold]\n")
 
     config = uvicorn.Config(web_app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)

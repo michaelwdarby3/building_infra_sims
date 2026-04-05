@@ -11,7 +11,7 @@ from pymodbus.datastore import (
     ModbusSequentialDataBlock,
     ModbusServerContext,
 )
-from pymodbus.server import StartAsyncTcpServer
+from pymodbus.server import ModbusTcpServer
 
 from building_infra_sims.behaviors import ValueBehavior
 
@@ -115,6 +115,7 @@ class ModbusDeviceSimulator:
 
         self._registers: list[RegisterDefinition] = []
         self._context: ModbusServerContext | None = None
+        self._server: ModbusTcpServer | None = None
         self._server_task: asyncio.Task | None = None
         self._behavior_task: asyncio.Task | None = None
         self._start_time: float = 0.0
@@ -193,13 +194,13 @@ class ModbusDeviceSimulator:
         if behaviors:
             self._behavior_task = asyncio.create_task(self._run_behaviors())
 
-        # Start server in background task
-        self._server_task = asyncio.create_task(
-            StartAsyncTcpServer(
-                context=self._context,
-                address=(self.bind_address, self.port),
-            )
+        # Start server — use ModbusTcpServer directly so we can shut down
+        # individual servers without affecting others in the same process.
+        self._server = ModbusTcpServer(
+            context=self._context,
+            address=(self.bind_address, self.port),
         )
+        self._server_task = asyncio.create_task(self._server.serve_forever())
 
         logger.info(f"Modbus device '{self.device_name}' is now online")
 
@@ -211,6 +212,11 @@ class ModbusDeviceSimulator:
                 await self._behavior_task
             except asyncio.CancelledError:
                 pass
+
+        # Shut down this specific server instance (closes TCP socket)
+        if self._server:
+            await self._server.shutdown()
+            self._server = None
 
         if self._server_task:
             self._server_task.cancel()

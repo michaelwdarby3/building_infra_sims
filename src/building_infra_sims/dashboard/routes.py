@@ -253,6 +253,13 @@ async def api_devices_partial(request: Request):
     )
 
 
+@router.get("/api/devices/json")
+async def api_devices_json(request: Request):
+    """JSON device list for programmatic access (E2E tests, scripts)."""
+    state = _get_state(request)
+    return state.get_device_summary()
+
+
 @router.get("/api/telemetry/history")
 async def api_telemetry_history(
     request: Request,
