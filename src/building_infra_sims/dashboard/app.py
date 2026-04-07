@@ -45,6 +45,8 @@ def create_app(
     preload_setup_skybox: bool = False,
 ) -> FastAPI:
     """Create a FastAPI app with an empty device pool."""
+    from building_infra_sims.config import settings
+
     app = FastAPI(
         title="Building Sim Dashboard",
         description="Control panel for simulated building infrastructure devices",
@@ -55,5 +57,18 @@ def create_app(
     app.state.preload_scenario = preload_scenario
     app.state.preload_setup_skybox = preload_setup_skybox
     app.include_router(router)
+
+    # Make base_path available in all templates for sub-path deployment
+    from building_infra_sims.dashboard.routes import templates
+
+    templates.env.globals["base_path"] = settings.dashboard_root_path
+
+    # If dashboard is proxied under a scanner (e.g. /scanner/simulator),
+    # provide a link back to the portal at the parent path (e.g. /scanner/)
+    root = settings.dashboard_root_path
+    if root.endswith("/simulator"):
+        templates.env.globals["portal_path"] = root[: -len("/simulator")] + "/"
+    else:
+        templates.env.globals["portal_path"] = ""
 
     return app

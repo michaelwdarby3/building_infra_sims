@@ -36,6 +36,9 @@ bsim = "building_infra_sims.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+building_infra_sims = ["dashboard/templates/**/*.html"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

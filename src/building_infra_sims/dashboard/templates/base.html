@@ -69,11 +69,12 @@
             <li><strong>Building Sim</strong></li>
         </ul>
         <ul>
-            <li><a href="/">Overview</a></li>
-            <li><a href="/devices">Devices</a></li>
-            <li><a href="/telemetry/history">Telemetry</a></li>
-            <li><a href="/sim-data">Sim Data</a></li>
-            <li><a href="/connections">Connections</a></li>
+            <li><a href="{{ base_path }}/">Overview</a></li>
+            <li><a href="{{ base_path }}/devices">Devices</a></li>
+            <li><a href="{{ base_path }}/telemetry/history">Telemetry</a></li>
+            <li><a href="{{ base_path }}/sim-data">Sim Data</a></li>
+            <li><a href="{{ base_path }}/connections">Connections</a></li>
+            {% if portal_path %}<li><a href="{{ portal_path }}">Scanner Portal ↗</a></li>{% endif %}
         </ul>
     </nav>
     <main class="container">

@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Paths
     profiles_dir: Path = Path(__file__).parent.parent.parent / "profiles"
 
+    # Dashboard
+    dashboard_root_path: str = ""
+
     @property
     def skybox_base_url(self) -> str:
         return f"http://{self.skybox_host}:{self.skybox_port}"

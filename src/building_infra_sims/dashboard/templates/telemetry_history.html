@@ -181,6 +181,7 @@
 </div>
 
 <script>
+const BASE_PATH = '{{ base_path }}';
 const COLORS = [
     '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
     '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
@@ -199,7 +200,7 @@ function sourceKey(device, point) { return device + '||' + point; }
 
 async function loadSources() {
     try {
-        const resp = await fetch('/api/telemetry/sources');
+        const resp = await fetch(BASE_PATH + '/api/telemetry/sources');
         const data = await resp.json();
         sources = data.sources || [];
         populateCompareSelect();
@@ -290,7 +291,7 @@ async function loadChartData(key) {
         source: 'local', minutes, device: info.device, point: info.point,
     });
     try {
-        const resp = await fetch('/api/telemetry/history?' + params);
+        const resp = await fetch(BASE_PATH + '/api/telemetry/history?' + params);
         const data = await resp.json();
         const points = (data.rows || []).map(r => ({
             x: r.timestamp * 1000,
@@ -390,7 +391,7 @@ async function refreshCompareChart() {
             source: 'local', minutes, device: src.device, point: src.point,
         });
         try {
-            const resp = await fetch('/api/telemetry/history?' + params);
+            const resp = await fetch(BASE_PATH + '/api/telemetry/history?' + params);
             const data = await resp.json();
             const points = (data.rows || []).map(r => ({
                 x: r.timestamp * 1000,
@@ -497,7 +498,7 @@ async function refreshAll() {
 
     // Check for new/removed sources
     try {
-        const resp = await fetch('/api/telemetry/sources');
+        const resp = await fetch(BASE_PATH + '/api/telemetry/sources');
         const data = await resp.json();
         const newSources = data.sources || [];
         if (newSources.length !== sources.length) {
@@ -527,7 +528,7 @@ async function refreshAll() {
             source: 'local', minutes, device: info.device, point: info.point,
         });
         try {
-            const resp = await fetch('/api/telemetry/history?' + params);
+            const resp = await fetch(BASE_PATH + '/api/telemetry/history?' + params);
             const data = await resp.json();
             const points = (data.rows || []).map(r => ({
                 x: r.timestamp * 1000,

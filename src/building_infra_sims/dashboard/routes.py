@@ -19,6 +19,12 @@ def _get_state(request: Request) -> DashboardState:
     return request.app.state.dashboard
 
 
+def _redirect(path: str) -> RedirectResponse:
+    from building_infra_sims.config import settings
+
+    return RedirectResponse(settings.dashboard_root_path + path, status_code=303)
+
+
 # ── HTML pages ────────────────────────────────────────────────────────────
 
 
@@ -123,7 +129,7 @@ async def action_start_device(
             unit_id=unit_id or None,
         )
 
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/stop-device/{device_id}")
@@ -131,7 +137,7 @@ async def action_stop_device(request: Request, device_id: str):
     """Stop a running simulator."""
     state = _get_state(request)
     await state.stop_device(device_id)
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/remove-device/{device_id}")
@@ -139,7 +145,7 @@ async def action_remove_device(request: Request, device_id: str):
     """Stop and remove a device entirely."""
     state = _get_state(request)
     await state.remove_device(device_id)
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/register-device/{device_id}")
@@ -147,7 +153,7 @@ async def action_register_device(request: Request, device_id: str):
     """Register a device with the gateway."""
     state = _get_state(request)
     await state.register_device(device_id)
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/unregister-device/{device_id}")
@@ -155,7 +161,7 @@ async def action_unregister_device(request: Request, device_id: str):
     """Unregister a device from the gateway."""
     state = _get_state(request)
     await state.unregister_device(device_id)
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/register-all")
@@ -163,7 +169,7 @@ async def action_register_all(request: Request):
     """Register all running devices with the gateway."""
     state = _get_state(request)
     await state.register_all()
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/unregister-all")
@@ -171,7 +177,7 @@ async def action_unregister_all(request: Request):
     """Unregister all devices from the gateway."""
     state = _get_state(request)
     await state.unregister_all()
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/stop-all")
@@ -179,7 +185,7 @@ async def action_stop_all(request: Request):
     """Stop all running simulators."""
     state = _get_state(request)
     await state.stop_all()
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 @router.post("/actions/load-scenario")
@@ -190,7 +196,7 @@ async def action_load_scenario(
     """Load and start all devices from a scenario file."""
     state = _get_state(request)
     await state.load_scenario(scenario_path)
-    return RedirectResponse("/devices", status_code=303)
+    return _redirect("/devices")
 
 
 # ── Simulator data page ────────────────────────────────────────────────

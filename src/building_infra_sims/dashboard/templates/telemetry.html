@@ -10,7 +10,7 @@
 </p>
 
 <div id="telemetry-table"
-     hx-get="/api/telemetry"
+     hx-get="{{ base_path }}/api/telemetry"
      hx-trigger="every 10s"
      hx-swap="innerHTML"
      hx-indicator=".htmx-indicator">

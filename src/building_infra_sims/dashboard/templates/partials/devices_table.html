@@ -31,22 +31,22 @@
             <td>
                 <div class="actions">
                     {% if d.status == "running" and not d.registered %}
-                    <form method="post" action="/actions/register-device/{{ d.id }}">
+                    <form method="post" action="{{ base_path }}/actions/register-device/{{ d.id }}">
                         <button type="submit">Register</button>
                     </form>
                     {% endif %}
                     {% if d.registered %}
-                    <form method="post" action="/actions/unregister-device/{{ d.id }}">
+                    <form method="post" action="{{ base_path }}/actions/unregister-device/{{ d.id }}">
                         <button type="submit" class="btn-secondary">Unregister</button>
                     </form>
                     {% endif %}
                     {% if d.status == "running" %}
-                    <form method="post" action="/actions/stop-device/{{ d.id }}">
+                    <form method="post" action="{{ base_path }}/actions/stop-device/{{ d.id }}">
                         <button type="submit" class="btn-danger">Stop</button>
                     </form>
                     {% endif %}
                     {% if d.status != "running" %}
-                    <form method="post" action="/actions/remove-device/{{ d.id }}">
+                    <form method="post" action="{{ base_path }}/actions/remove-device/{{ d.id }}">
                         <button type="submit" class="btn-danger">Remove</button>
                     </form>
                     {% endif %}
