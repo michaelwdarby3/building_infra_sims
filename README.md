@@ -41,6 +41,7 @@ The `.env` file uses a `BSIM_` prefix for all variables:
 | `BSIM_BACNET_PORT` | `47808` | BACnet/IP UDP port |
 | `BSIM_MODBUS_BIND_ADDRESS` | `0.0.0.0` | Modbus TCP bind address |
 | `BSIM_MODBUS_PORT` | `10502` | Default Modbus TCP port |
+| `BSIM_DASHBOARD_ROOT_PATH` | *(empty)* | URL prefix for sub-path deployment (e.g. `/scanner/simulator`) |
 
 Gateway credentials are only required for the `--setup-skybox`, `register`, and `verify` features. Simulators run without them.
 

@@ -69,7 +69,7 @@ profiles/
 
 **E2EVerifier** (`scenarios/verify.py`) — Starts a scenario, waits for gateway polling, then checks that telemetry data flows end-to-end.
 
-**Dashboard** (`dashboard/`) — FastAPI + Jinja2 + HTMX web UI with per-device REST API. Scenario preloading and gateway registration happen in the FastAPI lifespan handler (not before server start) so Modbus asyncio server tasks survive in uvicorn's event loop. The dashboard REST API (`/api/devices/json`, `/actions/stop-device/{id}`, `/actions/start-device/{id}`) enables programmatic device control for integration tests.
+**Dashboard** (`dashboard/`) — FastAPI + Jinja2 + HTMX web UI with per-device REST API. Scenario preloading and gateway registration happen in the FastAPI lifespan handler (not before server start) so Modbus asyncio server tasks survive in uvicorn's event loop. The dashboard REST API (`/api/devices/json`, `/actions/stop-device/{id}`, `/actions/start-device/{id}`) enables programmatic device control for integration tests. Supports sub-path deployment via `BSIM_DASHBOARD_ROOT_PATH` — all template links use a `{{ base_path }}` Jinja2 global. When proxied under the scanner at `/simulator`, a `{{ portal_path }}` global provides a link back to the scanner portal.
 
 **Modbus per-instance shutdown** — Uses `ModbusTcpServer` directly (not `StartAsyncTcpServer`) so individual Modbus simulators can be stopped/started independently via `server.shutdown()`.
 
@@ -87,6 +87,7 @@ Environment variables (prefix `BSIM_`) or `.env` file:
 | `BSIM_BACNET_PORT` | `47808` | BACnet UDP port |
 | `BSIM_MODBUS_BIND_ADDRESS` | `0.0.0.0` | Modbus TCP bind |
 | `BSIM_MODBUS_PORT` | `10502` | Modbus TCP port |
+| `BSIM_DASHBOARD_ROOT_PATH` | `""` | URL prefix for sub-path deployment (e.g. `/scanner/simulator`) |
 
 ## Conventions
 
