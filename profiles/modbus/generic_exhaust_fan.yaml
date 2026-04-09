@@ -1,5 +1,6 @@
 name: "Generic Exhaust Fan"
 description: "Variable speed exhaust fan with pressure control"
+equipment_class: "Exhaust_Fan"
 unit_id: 1
 port: 10520
 

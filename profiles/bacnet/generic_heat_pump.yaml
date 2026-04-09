@@ -1,5 +1,6 @@
 name: "Generic Heat Pump"
 description: "Air/water source heat pump with reversible operation"
+equipment_class: "Heat_Pump"
 device_id: 7101
 port: 47808
 

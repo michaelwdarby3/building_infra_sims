@@ -1,5 +1,6 @@
 name: "Generic Pump"
 description: "Variable speed centrifugal pump with pressure and flow monitoring"
+equipment_class: "Pump"
 unit_id: 1
 port: 10522
 

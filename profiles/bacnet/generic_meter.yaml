@@ -1,5 +1,6 @@
 name: "Generic BACnet Power Meter"
 description: "3-phase power meter exposed over BACnet/IP"
+equipment_class: "Electrical_Meter"
 device_id: 3001
 port: 47808
 

@@ -1,5 +1,6 @@
 name: "Generic Chiller"
 description: "Water-cooled chiller with entering/leaving temps and compressor staging"
+equipment_class: "Chiller"
 device_id: 5001
 port: 47808
 

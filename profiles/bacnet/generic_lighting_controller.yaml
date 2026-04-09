@@ -1,5 +1,6 @@
 name: "Generic Lighting Controller"
 description: "4-zone lighting controller with occupancy and daylight sensing"
+equipment_class: "Lighting_Equipment"
 device_id: 8001
 port: 47808
 

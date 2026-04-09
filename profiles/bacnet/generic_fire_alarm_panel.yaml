@@ -1,5 +1,6 @@
 name: "Generic Fire Alarm Panel"
 description: "8-zone fire alarm panel with trouble and supervisory monitoring"
+equipment_class: "Fire_Safety_Equipment"
 device_id: 9001
 port: 47808
 

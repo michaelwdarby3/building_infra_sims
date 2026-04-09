@@ -1,5 +1,6 @@
 name: "Generic Energy Meter (Demand)"
 description: "Advanced power meter with demand tracking and power quality"
+equipment_class: "Electrical_Meter"
 unit_id: 1
 port: 10511
 

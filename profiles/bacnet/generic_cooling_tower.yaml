@@ -1,5 +1,6 @@
 name: "Generic Cooling Tower"
 description: "Induced-draft cooling tower with fan, basin, and water quality monitoring"
+equipment_class: "Cooling_Tower"
 device_id: 7001
 port: 47808
 

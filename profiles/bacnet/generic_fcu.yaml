@@ -1,5 +1,6 @@
 name: "Generic Fan Coil Unit"
 description: "2-pipe or 4-pipe fan coil unit with chilled and hot water valves"
+equipment_class: "FCU"
 device_id: 6101
 port: 47808
 

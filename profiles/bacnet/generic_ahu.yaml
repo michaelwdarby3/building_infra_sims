@@ -1,5 +1,6 @@
 name: "Generic AHU"
 description: "Air Handling Unit with typical BACnet points"
+equipment_class: "AHU"
 vendor_name: "SimulatedHVAC"
 
 objects:

@@ -1,5 +1,6 @@
 name: "Generic HVAC Controller"
 description: "Zone-level HVAC controller with temp, humidity, damper, and fan"
+equipment_class: "HVAC_Equipment"
 unit_id: 1
 port: 10510
 

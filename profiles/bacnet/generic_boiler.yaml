@@ -1,5 +1,6 @@
 name: "Generic Boiler"
 description: "Hot water boiler with supply/return temperatures and firing stages"
+equipment_class: "Boiler"
 device_id: 4001
 port: 47808
 

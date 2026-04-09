@@ -1,5 +1,6 @@
 name: "Generic VFD"
 description: "Variable Frequency Drive for pump or fan motor"
+equipment_class: "VFD"
 unit_id: 1
 port: 10503
 

@@ -63,6 +63,13 @@ class ScenarioRunner:
                 ip_address=dev.get("ip_address"),
                 port=port,
             )
+            # Read equipment_class from profile for later registration
+            profile_path = Path(dev["profile"])
+            with open(profile_path) as f:
+                profile_data = yaml.safe_load(f)
+            sim._equipment_class = dev.get(
+                "equipment_class", profile_data.get("equipment_class")
+            )
             self._bacnet_sims.append(sim)
             # Next device gets the next port (if not explicitly set)
             if "port" not in dev:
@@ -76,6 +83,13 @@ class ScenarioRunner:
                 port=dev.get("port"),
                 unit_id=dev.get("unit_id"),
                 bind_address=dev.get("bind_address", "0.0.0.0"),
+            )
+            # Read equipment_class from profile for later registration
+            profile_path = Path(dev["profile"])
+            with open(profile_path) as f:
+                profile_data = yaml.safe_load(f)
+            sim._equipment_class = dev.get(
+                "equipment_class", profile_data.get("equipment_class")
             )
             self._modbus_sims.append(sim)
 
@@ -246,6 +260,15 @@ class ScenarioRunner:
                         logger.warning(
                             f"BACnet discovery failed for '{sim.device_name}': {e}"
                         )
+                    # Set equipment class from profile
+                    eq_class = getattr(sim, "_equipment_class", None)
+                    if eq_class and conn.id:
+                        try:
+                            await sb.update_equipment_class(conn.id, eq_class)
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to set equipment class for '{sim.device_name}': {e}"
+                            )
 
             # ── Modbus devices ──
             for sim in self._modbus_sims:
@@ -303,6 +326,15 @@ class ScenarioRunner:
                         f"Registered {created_points} Modbus points for "
                         f"'{sim.device_name}'"
                     )
+                    # Set equipment class from profile
+                    eq_class = getattr(sim, "_equipment_class", None)
+                    if eq_class and conn.id:
+                        try:
+                            await sb.update_equipment_class(conn.id, eq_class)
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to set equipment class for '{sim.device_name}': {e}"
+                            )
 
             console.print(
                 f"[bold green]Gateway registration complete:[/bold green] "

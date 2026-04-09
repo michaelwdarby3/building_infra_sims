@@ -1,5 +1,6 @@
 name: "Generic Rooftop Unit"
 description: "Packaged rooftop unit with DX cooling, gas heat, and economizer"
+equipment_class: "AHU"
 device_id: 6001
 port: 47808
 

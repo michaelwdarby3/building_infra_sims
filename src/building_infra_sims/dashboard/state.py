@@ -52,6 +52,7 @@ class RunningDevice:
     registered: bool = False
     gateway_conn_id: str | None = None
     error: str | None = None
+    equipment_class: str | None = None
 
 
 class DashboardState:
@@ -147,6 +148,11 @@ class DashboardState:
                 port=port,
             )
 
+            # Read equipment_class from profile
+            with open(profile_path) as f:
+                profile_data = yaml.safe_load(f)
+            eq_class = profile_data.get("equipment_class")
+
             dev_id = str(uuid.uuid4())[:8]
             device = RunningDevice(
                 id=dev_id,
@@ -154,6 +160,7 @@ class DashboardState:
                 protocol="bacnet",
                 profile_path=profile_path,
                 sim=sim,
+                equipment_class=eq_class,
             )
 
             try:
@@ -188,6 +195,11 @@ class DashboardState:
                 unit_id=unit_id,
             )
 
+            # Read equipment_class from profile
+            with open(profile_path) as f:
+                profile_data = yaml.safe_load(f)
+            eq_class = profile_data.get("equipment_class")
+
             dev_id = str(uuid.uuid4())[:8]
             device = RunningDevice(
                 id=dev_id,
@@ -195,6 +207,7 @@ class DashboardState:
                 protocol="modbus",
                 profile_path=profile_path,
                 sim=sim,
+                equipment_class=eq_class,
             )
 
             try:
@@ -376,6 +389,13 @@ class DashboardState:
                             await sb.save_bacnet_objects(conn.id, auto_add=True)
                         except Exception as e:
                             logger.warning(f"BACnet discovery failed: {e}")
+                        if device.equipment_class:
+                            try:
+                                await sb.update_equipment_class(
+                                    conn.id, device.equipment_class
+                                )
+                            except Exception as e:
+                                logger.warning(f"Failed to set equipment class: {e}")
 
                 elif device.protocol == "modbus":
                     conn = await sb.create_connection(
@@ -416,6 +436,13 @@ class DashboardState:
                                 )
                             except Exception as e:
                                 logger.warning(f"Failed to add point '{reg.name}': {e}")
+                        if device.equipment_class:
+                            try:
+                                await sb.update_equipment_class(
+                                    conn.id, device.equipment_class
+                                )
+                            except Exception as e:
+                                logger.warning(f"Failed to set equipment class: {e}")
 
                 device.registered = True
                 device.error = None  # clear any previous error

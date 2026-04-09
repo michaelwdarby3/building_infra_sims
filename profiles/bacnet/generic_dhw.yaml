@@ -1,5 +1,6 @@
 name: "Generic Domestic Hot Water"
 description: "Domestic hot water system with storage tank, burner/element, and recirc pump"
+equipment_class: "Hot_Water_System"
 device_id: 6201
 port: 47808
 

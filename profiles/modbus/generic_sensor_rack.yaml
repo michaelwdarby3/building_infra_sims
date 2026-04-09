@@ -1,5 +1,6 @@
 name: "Generic Sensor Rack"
 description: "Multi-sensor module with temperature, humidity, CO2, and pressure"
+equipment_class: "Sensor"
 unit_id: 1
 port: 10504
 

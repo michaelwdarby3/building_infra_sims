@@ -266,6 +266,17 @@ class SkyboxClient:
         )
         resp.raise_for_status()
 
+    async def update_equipment_class(
+        self, connection_id: str, equipment_class: str
+    ) -> dict:
+        """Set the Brick Schema equipment class for a connection."""
+        resp = await self._client.put(
+            f"/api/connections/{connection_id}/equipment-class",
+            json={"equipment_class": equipment_class},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     async def update_point_cloud_sync(
         self, connection_id: str, point_name: str, sync: bool
     ) -> PointCloudSyncResponse:

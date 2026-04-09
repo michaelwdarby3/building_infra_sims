@@ -1,5 +1,6 @@
 name: "Generic Weather Station"
 description: "Outdoor weather monitoring station with temp, humidity, wind, and solar"
+equipment_class: "Weather_Station"
 unit_id: 1
 port: 10512
 

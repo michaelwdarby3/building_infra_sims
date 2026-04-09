@@ -1,5 +1,6 @@
 name: "Generic VAV Box"
 description: "Variable Air Volume terminal unit with reheat"
+equipment_class: "VAV"
 device_id: 2001
 port: 47808
 
