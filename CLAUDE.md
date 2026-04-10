@@ -61,11 +61,11 @@ profiles/
 
 ## Key Concepts
 
-**Device profiles** — YAML files defining BACnet objects or Modbus registers with attached value behaviors. Loaded by `bacnet/profiles.py` and `modbus/profiles.py`.
+**Device profiles** — YAML files defining BACnet objects or Modbus registers with attached value behaviors. Each profile includes an `equipment_class` field (e.g. `AHU`, `VAV`, `Boiler`) that is propagated to the gateway during registration. Loaded by `bacnet/profiles.py` and `modbus/profiles.py`.
 
 **ValueBehaviors** (`behaviors/base.py`) — Plugin system for realistic sensor data. Types: `static`, `sine_wave`, `phased_sine_wave`, `random_walk`, `accumulator`, `schedule`, `binary_toggle`, `weighted_choice`. Derived behaviors (`dew_point`, `wet_bulb`, `deadband_switch`) reference other behaviors by name and resolve in a second pass.
 
-**ScenarioRunner** (`scenarios/runner.py`) — Starts multiple BACnet + Modbus simulators from a scenario YAML, optionally registers them with a Skybox gateway.
+**ScenarioRunner** (`scenarios/runner.py`) — Starts multiple BACnet + Modbus simulators from a scenario YAML, optionally registers them with a Skybox gateway. After registration, sets each connection's Brick Schema equipment class via the gateway API if the profile specifies one.
 
 **E2EVerifier** (`scenarios/verify.py`) — Starts a scenario, waits for gateway polling, then checks that telemetry data flows end-to-end.
 
