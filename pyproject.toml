@@ -9,7 +9,7 @@ description = "Building infrastructure protocol simulators for BACnet/IP and Mod
 requires-python = ">=3.11"
 dependencies = [
     "bacpypes3>=0.0.99",
-    "pymodbus>=3.6",
+    "pymodbus>=3.6,<3.13",
     "httpx>=0.27",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
