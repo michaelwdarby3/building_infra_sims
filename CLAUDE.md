@@ -97,7 +97,8 @@ Environment variables (prefix `BSIM_`) or `.env` file:
 - Kebab-case for BACnet object types (`analog-input`, `binary-output`)
 - UPPERCASE for Modbus datatypes (`UINT16`, `FLOAT32`)
 - Two-pass profile loading for deferred behaviors (dew_point, wet_bulb reference other behaviors by name)
+- pymodbus pinned to `>=3.6,<3.13` — version 3.13 rejects `ModbusSequentialDataBlock(0, values)` (address=0) and changes `ModbusServerContext` API, breaking all Modbus simulators
 
 ## Testing
 
-pytest with pytest-asyncio (`asyncio_mode = "auto"`). Tests in `tests/`: profile loading, dashboard, data sanity, recorder, plus `integration/` for gateway tests.
+pytest with pytest-asyncio (`asyncio_mode = "auto"`). 200 tests in `tests/`: profile loading, dashboard, data sanity, recorder, plus `integration/` for gateway tests.
