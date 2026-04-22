@@ -549,9 +549,13 @@ class DashboardState:
     # ── Local telemetry (reads directly from simulators) ─────────────────
 
     def read_local_telemetry(self) -> list[dict]:
-        """Read current values from all running simulators."""
-        from bacpypes3.primitivedata import ObjectIdentifier
+        """Read current values from all running simulators.
 
+        BACnet points include ``last_write_at``, ``override_active``, and
+        ``commanded_priority`` when the point is commandable and the priority
+        array shows an active slot. Modbus rows include ``last_write_at``
+        from the TrackedDataBlock external-write timestamp.
+        """
         points = []
         for dev in self.devices.values():
             if dev.status != "running":
@@ -561,29 +565,24 @@ class DashboardState:
             if dev.protocol == "bacnet":
                 if not sim._app:
                     continue
-                for obj_def in sim._object_defs:
-                    try:
-                        oid = ObjectIdentifier(obj_def["object-identifier"])
-                        obj = sim._app.get_object_id(oid)
-                        if obj is None:
-                            continue
-                        value = obj.presentValue
-                        # Convert BACpypes values to plain Python types
-                        if hasattr(value, "value"):
-                            value = value.value
-                        if isinstance(value, float):
-                            value = round(value, 4)
-                        points.append({
-                            "device": dev.name,
-                            "device_id": dev.id,
-                            "protocol": "BACnet",
-                            "point": obj_def["object-name"],
-                            "value": value,
-                            "units": obj_def.get("units", ""),
-                            "obj_type": obj_def["object-type"],
-                        })
-                    except Exception:
-                        continue
+                for obj_info in sim.get_object_info():
+                    value = obj_info["present_value"]
+                    if hasattr(value, "value"):
+                        value = value.value
+                    if isinstance(value, float):
+                        value = round(value, 4)
+                    points.append({
+                        "device": dev.name,
+                        "device_id": dev.id,
+                        "protocol": "BACnet",
+                        "point": obj_info["name"],
+                        "value": value,
+                        "units": obj_info.get("units") or "",
+                        "obj_type": obj_info["object_type"],
+                        "last_write_at": obj_info.get("last_write_at"),
+                        "override_active": obj_info.get("override_active", False),
+                        "commanded_priority": obj_info.get("commanded_priority"),
+                    })
 
             elif dev.protocol == "modbus":
                 for reg_data in sim.get_register_values():
@@ -598,6 +597,9 @@ class DashboardState:
                         "value": value,
                         "units": reg_data["units"],
                         "obj_type": reg_data["datatype"],
+                        "last_write_at": reg_data.get("last_write_at"),
+                        "override_active": False,
+                        "commanded_priority": None,
                     })
 
         return points

@@ -73,6 +73,11 @@ profiles/
 
 **Modbus per-instance shutdown** — Uses `ModbusTcpServer` directly (not `StartAsyncTcpServer`) so individual Modbus simulators can be stopped/started independently via `server.shutdown()`.
 
+**External-write tracking** — Both simulators detect and surface writes from an external client (e.g. the scanner's override feature):
+- **Modbus** (`modbus/server.TrackedDataBlock`) — subclasses `ModbusSequentialDataBlock`. The pymodbus handler calls `setValues()`, which records an `external_writes[address] = time.time()` entry. The behavior loop bypasses tracking via `set_internal()` so scheduled updates are not counted as external writes. Registers written within the last `EXTERNAL_WRITE_HOLD_SECONDS` (60s) are *skipped* by the behavior loop, so FC06/FC05 overrides stick long enough to be observed.
+- **BACnet** (`bacnet/server._fingerprint_priority_array`) — at each behavior tick, `_scan_priority_arrays()` fingerprints slots 1..15 of every commandable object's priorityArray. Slot 16 is excluded so the behavior loop's `presentValue` writes (which land at priority 16) don't register. Any change between ticks records `_external_writes[oid] = time.time()`. The bacpypes3 `Commandable` mixin already prevents higher-priority slots from being overwritten, so no hold-window is needed here.
+- **Dashboard surface** — `get_register_values()` / `get_object_info()` / `read_local_telemetry()` expose `last_write_at`, `override_active`, and `commanded_priority`. The `/api/sim-data` partial highlights recently-written rows in amber and shows "Override @P8" badges + "wrote Ns ago" age labels.
+
 ## Config
 
 Environment variables (prefix `BSIM_`) or `.env` file:
@@ -101,4 +106,4 @@ Environment variables (prefix `BSIM_`) or `.env` file:
 
 ## Testing
 
-pytest with pytest-asyncio (`asyncio_mode = "auto"`). 200 tests in `tests/`: profile loading, dashboard, data sanity, recorder, plus `integration/` for gateway tests.
+pytest with pytest-asyncio (`asyncio_mode = "auto"`). 212 tests in `tests/`: profile loading, dashboard, data sanity, recorder, write-tracking (Modbus `TrackedDataBlock` + BACnet priority-array fingerprinting), plus `integration/` for gateway tests.

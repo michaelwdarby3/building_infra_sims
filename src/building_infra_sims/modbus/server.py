@@ -17,6 +17,54 @@ from building_infra_sims.behaviors import ValueBehavior
 
 logger = logging.getLogger(__name__)
 
+# Registers written by an external client are held for this many seconds
+# before the behavior loop is allowed to overwrite them again. Without this,
+# a gateway that writes an override at FC06 would see the value stomped back
+# within 5 seconds by the behavior loop, defeating the point of the write.
+EXTERNAL_WRITE_HOLD_SECONDS = 60.0
+
+
+class TrackedDataBlock(ModbusSequentialDataBlock):
+    """Data block that records external (client-initiated) writes.
+
+    Writes coming from the pymodbus request handler hit ``setValues`` and are
+    recorded with a timestamp per address. The simulator's behavior loop
+    bypasses tracking by calling ``set_internal`` so that scheduled updates
+    don't register as external writes.
+    """
+
+    def __init__(self, address: int, values: list[int]):
+        super().__init__(address, values)
+        self.external_writes: dict[int, float] = {}
+        self._skip_track: bool = False
+
+    def setValues(self, address: int, values):  # type: ignore[override]
+        if not self._skip_track:
+            ts = time.time()
+            if isinstance(values, (list, tuple)):
+                for offset in range(len(values)):
+                    self.external_writes[address + offset] = ts
+            else:
+                self.external_writes[address] = ts
+        super().setValues(address, values)
+
+    def set_internal(self, address: int, values) -> None:
+        """Update register values without recording an external write."""
+        self._skip_track = True
+        try:
+            self.setValues(address, values)
+        finally:
+            self._skip_track = False
+
+    def last_write_for_range(self, address: int, count: int) -> float | None:
+        """Return the most recent external-write timestamp across a range."""
+        latest: float | None = None
+        for offset in range(count):
+            ts = self.external_writes.get(address + offset)
+            if ts is not None and (latest is None or ts > latest):
+                latest = ts
+        return latest
+
 # Number of 16-bit registers needed for each data type
 REGISTER_COUNTS = {
     "UINT16": 1,
@@ -119,6 +167,10 @@ class ModbusDeviceSimulator:
         self._server_task: asyncio.Task | None = None
         self._behavior_task: asyncio.Task | None = None
         self._start_time: float = 0.0
+        self._hr_block: TrackedDataBlock | None = None
+        self._ir_block: TrackedDataBlock | None = None
+        self._co_block: TrackedDataBlock | None = None
+        self._di_block: TrackedDataBlock | None = None
 
     def add_register(
         self,
@@ -149,9 +201,9 @@ class ModbusDeviceSimulator:
         holding_regs = [r for r in self._registers if r.register_type == "holding"]
         input_regs = [r for r in self._registers if r.register_type == "input"]
 
-        def build_block(regs: list[RegisterDefinition]) -> ModbusSequentialDataBlock:
+        def build_block(regs: list[RegisterDefinition]) -> TrackedDataBlock:
             if not regs:
-                return ModbusSequentialDataBlock(1, [0] * 100)
+                return TrackedDataBlock(1, [0] * 100)
 
             max_addr = max(r.address + r.count for r in regs)
             # Pad to at least max_addr registers
@@ -164,13 +216,18 @@ class ModbusDeviceSimulator:
                 for i, v in enumerate(packed):
                     values[reg.address + i] = v
 
-            return ModbusSequentialDataBlock(1, values)
+            return TrackedDataBlock(1, values)
+
+        self._hr_block = build_block(holding_regs)
+        self._ir_block = build_block(input_regs)
+        self._co_block = TrackedDataBlock(0, [0] * 100)
+        self._di_block = TrackedDataBlock(0, [0] * 100)
 
         device_context = ModbusDeviceContext(
-            hr=build_block(holding_regs),
-            ir=build_block(input_regs),
-            co=ModbusSequentialDataBlock(0, [0] * 100),
-            di=ModbusSequentialDataBlock(0, [0] * 100),
+            hr=self._hr_block,
+            ir=self._ir_block,
+            co=self._co_block,
+            di=self._di_block,
         )
 
         return ModbusServerContext(
@@ -227,23 +284,34 @@ class ModbusDeviceSimulator:
 
         logger.info(f"Modbus device '{self.device_name}' stopped")
 
+    def _block_for(self, register_type: str) -> TrackedDataBlock | None:
+        if register_type == "holding":
+            return self._hr_block
+        if register_type == "input":
+            return self._ir_block
+        return None
+
     def set_register(self, address: int, value: Any, datatype: str = "UINT16") -> None:
-        """Update a register value."""
-        if not self._context:
+        """Update a register value programmatically (not counted as an external write)."""
+        if not self._context or self._hr_block is None:
             raise RuntimeError("Simulator not started")
 
         packed = pack_value(value, datatype)
-        device_ctx = self._context[self.unit_id]
-        for i, v in enumerate(packed):
-            device_ctx.setValues(3, address + i, [v])  # 3 = holding registers
+        self._hr_block.set_internal(address + 1, packed)
 
     def get_register_values(self) -> list[dict]:
-        """Read current values from all registers."""
+        """Read current values from all registers, including write-tracking metadata."""
         if not self._context:
             return []
         results = []
         device_ctx = self._context[self.unit_id]
         for reg in self._registers:
+            block = self._block_for(reg.register_type)
+            last_write = (
+                block.last_write_for_range(reg.address + 1, reg.count)
+                if block is not None
+                else None
+            )
             try:
                 fx = 3 if reg.register_type == "holding" else 4
                 raw = device_ctx.getValues(fx, reg.address, reg.count)
@@ -253,6 +321,7 @@ class ModbusDeviceSimulator:
                     "value": value,
                     "units": reg.unit,
                     "datatype": reg.datatype,
+                    "last_write_at": last_write,
                 })
             except Exception:
                 results.append({
@@ -260,23 +329,38 @@ class ModbusDeviceSimulator:
                     "value": None,
                     "units": reg.unit,
                     "datatype": reg.datatype,
+                    "last_write_at": last_write,
                 })
         return results
 
     async def _run_behaviors(self, interval: float = 5.0) -> None:
-        """Periodically update register values based on their behaviors."""
+        """Periodically update register values based on their behaviors.
+
+        Registers that received an external write within the last
+        ``EXTERNAL_WRITE_HOLD_SECONDS`` are skipped so that the behavior loop
+        does not immediately overwrite commanded setpoints.
+        """
         while True:
             elapsed = time.monotonic() - self._start_time
+            now = time.time()
             for reg in self._registers:
                 if not reg.behavior:
                     continue
+                block = self._block_for(reg.register_type)
+                if block is not None:
+                    last_write = block.last_write_for_range(reg.address + 1, reg.count)
+                    if last_write is not None and (now - last_write) < EXTERNAL_WRITE_HOLD_SECONDS:
+                        continue
                 try:
                     new_value = reg.behavior.update(elapsed)
                     packed = pack_value(new_value, reg.datatype)
-                    device_ctx = self._context[self.unit_id]
-                    fx = 3 if reg.register_type == "holding" else 4
-                    for i, v in enumerate(packed):
-                        device_ctx.setValues(fx, reg.address + i, [v])
+                    if block is not None:
+                        block.set_internal(reg.address + 1, packed)
+                    else:
+                        device_ctx = self._context[self.unit_id]
+                        fx = 3 if reg.register_type == "holding" else 4
+                        for i, v in enumerate(packed):
+                            device_ctx.setValues(fx, reg.address + i, [v])
                 except Exception as e:
                     logger.warning(f"Behavior update failed for {reg.name}: {e}")
             await asyncio.sleep(interval)

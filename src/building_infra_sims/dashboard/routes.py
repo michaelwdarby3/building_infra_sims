@@ -204,16 +204,16 @@ async def action_load_scenario(
 
 @router.get("/sim-data", response_class=HTMLResponse)
 async def sim_data_page(request: Request):
+    import time as _time
     state = _get_state(request)
     points = state.read_local_telemetry()
-    # Group by device for display
     devices: dict[str, list] = {}
     for p in points:
         devices.setdefault(p["device"], []).append(p)
     return templates.TemplateResponse(
         request,
         "sim_data.html",
-        {"devices": devices, "total_points": len(points)},
+        {"devices": devices, "total_points": len(points), "now": _time.time()},
     )
 
 
@@ -223,6 +223,7 @@ async def sim_data_page(request: Request):
 @router.get("/api/sim-data", response_class=HTMLResponse)
 async def api_sim_data_partial(request: Request):
     """Return just the simulator data table (HTMX swap target)."""
+    import time as _time
     state = _get_state(request)
     points = state.read_local_telemetry()
     devices: dict[str, list] = {}
@@ -231,7 +232,7 @@ async def api_sim_data_partial(request: Request):
     return templates.TemplateResponse(
         request,
         "partials/sim_data_table.html",
-        {"devices": devices, "total_points": len(points)},
+        {"devices": devices, "total_points": len(points), "now": _time.time()},
     )
 
 

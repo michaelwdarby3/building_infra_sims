@@ -21,6 +21,44 @@ from building_infra_sims.behaviors import ValueBehavior
 logger = logging.getLogger(__name__)
 
 
+# Priority-array fingerprint helpers. A commandable object in bacpypes3 exposes a
+# 16-slot priorityArray where slot N (1-based) holds the value commanded at
+# priority N (or `null` when that priority is free). The object's effective
+# present-value is the value at the lowest (highest-priority) non-null slot,
+# or the relinquishDefault if all 16 are null.
+_PRIORITY_VALUE_FIELDS = ("real", "integer", "unsigned", "boolean", "enumerated")
+
+
+def _priority_slot_value(priority_value) -> Any:
+    """Extract the active choice from a PriorityValue, or None if null."""
+    for field in _PRIORITY_VALUE_FIELDS:
+        val = getattr(priority_value, field, None)
+        if val is not None:
+            return val
+    return None
+
+
+def _fingerprint_priority_array(obj) -> tuple[tuple[int, Any], ...]:
+    """Capture the non-null slots 1..15 of a commandable object's priority array.
+
+    Slot 16 (relinquish default / local writes) is excluded so the behavior loop
+    setting ``.presentValue`` each tick does not register as an external write.
+    """
+    pa = getattr(obj, "priorityArray", None)
+    if pa is None:
+        return ()
+    slots: list[tuple[int, Any]] = []
+    for priority in range(1, 16):
+        try:
+            pv = pa[priority - 1]
+        except (IndexError, Exception):
+            continue
+        val = _priority_slot_value(pv)
+        if val is not None:
+            slots.append((priority, val))
+    return tuple(slots)
+
+
 def _get_local_ip() -> str:
     """Auto-detect the local IP address on the LAN."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -84,6 +122,11 @@ class BACnetDeviceSimulator:
         self._app: Application | None = None
         self._behavior_task: asyncio.Task | None = None
         self._start_time: float = 0.0
+        # Per-object external-write tracking. A "write" is any change to
+        # priority-array slots 1..15 between behavior ticks (slot 16 is the
+        # relinquish default / local writes, so it's excluded).
+        self._external_writes: dict[str, float] = {}
+        self._priority_fingerprints: dict[str, tuple[tuple[int, Any], ...]] = {}
 
     def add_object(
         self,
@@ -298,9 +341,75 @@ class BACnetDeviceSimulator:
 
         obj.presentValue = value
 
+    def _scan_priority_arrays(self) -> None:
+        """Check every commandable object for priority-array changes.
+
+        Called at the start of each behavior tick. If an object's fingerprint
+        (non-null slots 1..15) has changed since the last tick, record the
+        current wall-clock time as the last external-write timestamp for that
+        object. Slot 16 is excluded, so the behavior loop's own writes — which
+        set ``presentValue`` and land at priority 16 — do not register.
+        """
+        if self._app is None:
+            return
+        for obj_def in self._object_defs:
+            if obj_def["object-type"] not in COMMANDABLE_TYPES:
+                continue
+            key = obj_def["object-identifier"]
+            try:
+                oid = ObjectIdentifier(key)
+                obj = self._app.get_object_id(oid)
+            except Exception:
+                continue
+            if obj is None:
+                continue
+            fingerprint = _fingerprint_priority_array(obj)
+            previous = self._priority_fingerprints.get(key)
+            if previous is not None and fingerprint != previous:
+                self._external_writes[key] = time.time()
+            self._priority_fingerprints[key] = fingerprint
+
+    def get_object_info(self) -> list[dict[str, Any]]:
+        """Return per-object state including override / last-write metadata."""
+        if self._app is None:
+            return []
+        info: list[dict[str, Any]] = []
+        for obj_def in self._object_defs:
+            key = obj_def["object-identifier"]
+            try:
+                oid = ObjectIdentifier(key)
+                obj = self._app.get_object_id(oid)
+            except Exception:
+                obj = None
+            present_value = None
+            override_active = False
+            commanded_priority: int | None = None
+            if obj is not None:
+                try:
+                    present_value = obj.presentValue
+                except Exception:
+                    present_value = None
+                if obj_def["object-type"] in COMMANDABLE_TYPES:
+                    fingerprint = _fingerprint_priority_array(obj)
+                    if fingerprint:
+                        override_active = True
+                        commanded_priority = fingerprint[0][0]
+            info.append({
+                "name": obj_def.get("object-name"),
+                "object_type": obj_def["object-type"],
+                "object_identifier": key,
+                "present_value": present_value,
+                "units": obj_def.get("units"),
+                "last_write_at": self._external_writes.get(key),
+                "override_active": override_active,
+                "commanded_priority": commanded_priority,
+            })
+        return info
+
     async def _run_behaviors(self, interval: float = 5.0) -> None:
         """Periodically update object values based on their behaviors."""
         while True:
+            self._scan_priority_arrays()
             elapsed = time.monotonic() - self._start_time
             for key, behavior in self._behaviors.items():
                 try:
