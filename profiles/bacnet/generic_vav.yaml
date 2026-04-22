@@ -1,5 +1,5 @@
 name: "Generic VAV Box"
-description: "Variable Air Volume terminal unit with reheat"
+description: "Variable Air Volume terminal unit with reheat — follows world occupancy + heating demand"
 equipment_class: "VAV"
 device_id: 2001
 port: 47808
@@ -11,12 +11,13 @@ objects:
     name: "Zone Temperature"
     present_value: 72.0
     units: degrees-fahrenheit
-    description: "Zone space temperature"
+    description: "Zone space temperature — tracks zone setpoint with small drift"
     behavior:
-      type: sine_wave
-      center: 72.0
-      amplitude: 5.0
-      period: 7200
+      type: tracks
+      source: "Cooling Setpoint"
+      bias: -1.0       # mid-deadband between heat/cool setpoints
+      noise: 0.3
+      lag_factor: 0.5
 
   - object_type: analog-input
     instance: 2
@@ -24,23 +25,32 @@ objects:
     present_value: 55.0
     units: degrees-fahrenheit
     description: "Air temperature leaving the VAV box"
+    # In cooling season ≈55°F (AHU SAT pass-through), in heating reheats to ~95°F.
     behavior:
-      type: sine_wave
-      center: 56.0
-      amplitude: 7.0
-      period: 3600
+      type: conditional_on_oat
+      bands:
+        - oat_below: 45
+          value: 90.0   # reheat fully engaged
+        - oat_below: 60
+          value: 70.0   # partial reheat
+        - oat_below: 200
+          value: 55.0   # cooling-only
+      noise: 1.5
 
   - object_type: analog-input
     instance: 3
     name: "Airflow CFM"
     present_value: 400.0
     units: cubic-feet-per-minute
-    description: "Measured airflow through the VAV box"
+    description: "Measured airflow — follows cooling demand with a 200 CFM minimum floor"
     behavior:
-      type: sine_wave
-      center: 450.0
-      amplitude: 350.0
-      period: 3600
+      type: world_value
+      signal: cooling_demand
+      scale: 600.0
+      offset: 200.0
+      noise: 15.0
+      min: 200.0
+      max: 800.0
 
   # ── Commanded Outputs ──
   - object_type: analog-output
@@ -48,14 +58,29 @@ objects:
     name: "Damper Position"
     present_value: 50.0
     units: percent
-    description: "VAV damper position command"
+    description: "VAV damper position — follows cooling demand"
+    behavior:
+      type: world_value
+      signal: cooling_demand
+      scale: 75.0
+      offset: 25.0     # 25% minimum ventilation position
+      noise: 2.0
+      min: 25.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 2
     name: "Reheat Valve Command"
     present_value: 0.0
     units: percent
-    description: "Hot water reheat valve position"
+    description: "Hot water reheat valve — follows heating demand"
+    behavior:
+      type: world_value
+      signal: heating_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   # ── Setpoints & Config ──
   - object_type: analog-value
@@ -64,6 +89,9 @@ objects:
     present_value: 74.0
     units: degrees-fahrenheit
     description: "Zone cooling setpoint"
+    behavior:
+      type: static
+      value: 74.0
 
   - object_type: analog-value
     instance: 2
@@ -71,37 +99,42 @@ objects:
     present_value: 70.0
     units: degrees-fahrenheit
     description: "Zone heating setpoint"
+    behavior:
+      type: static
+      value: 70.0
 
   - object_type: analog-value
     instance: 3
     name: "Minimum Airflow Setpoint"
     present_value: 200.0
     units: cubic-feet-per-minute
-    description: "Minimum ventilation airflow"
+    behavior:
+      type: static
+      value: 200.0
 
   - object_type: analog-value
     instance: 4
     name: "Maximum Airflow Setpoint"
     present_value: 800.0
     units: cubic-feet-per-minute
-    description: "Maximum cooling airflow"
+    behavior:
+      type: static
+      value: 800.0
 
   # ── Status ──
   - object_type: binary-input
     instance: 1
     name: "Occupancy Status"
     present_value: active
-    description: "Zone occupancy sensor"
+    description: "Zone occupancy — follows world schedule"
     behavior:
-      type: binary_toggle
-      on_duration: 36000
-      off_duration: 14400
+      type: occupancy_binary
+      threshold: 0.1
 
   - object_type: binary-value
     instance: 1
     name: "Zone Override Active"
     present_value: inactive
-    description: "Local override is active"
 
   - object_type: multi-state-value
     instance: 1

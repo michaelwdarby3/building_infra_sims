@@ -1,8 +1,11 @@
 name: "Generic VFD"
-description: "Variable Frequency Drive for pump or fan motor"
+description: "Variable Frequency Drive — load tracks occupancy, thermal rises with load"
 equipment_class: "VFD"
 unit_id: 1
 port: 10503
+
+# 480V 3-phase drive on a medium-sized pump/fan motor. Frequency and
+# current follow occupancy; heatsink/motor temp rise with sustained load.
 
 registers:
   holding:
@@ -13,27 +16,40 @@ registers:
       unit: Hz
       initial_value: 45.0
       behavior:
-        type: sine_wave
-        center: 45.0
-        amplitude: 10.0
-        period: 1800
+        type: world_value
+        signal: occupancy
+        scale: 30.0
+        offset: 25.0
+        noise: 0.5
+        min: 25.0
+        max: 60.0
 
     - address: 2
       name: "Speed Reference"
       datatype: FLOAT32
       unit: Hz
       initial_value: 45.0
+      behavior:
+        type: world_value
+        signal: occupancy
+        scale: 30.0
+        offset: 25.0
+        noise: 0.2
 
     - address: 4
       name: "Motor Speed RPM"
       datatype: FLOAT32
       unit: RPM
       initial_value: 1350.0
+      # 4-pole motor: RPM ≈ 30 × Hz.
       behavior:
-        type: sine_wave
-        center: 1350.0
-        amplitude: 300.0
-        period: 1800
+        type: world_value
+        signal: occupancy
+        scale: 900.0
+        offset: 750.0
+        noise: 10.0
+        min: 750.0
+        max: 1800.0
 
     # ── Electrical ──
     - address: 10
@@ -42,22 +58,26 @@ registers:
       unit: A
       initial_value: 12.5
       behavior:
-        type: sine_wave
-        center: 12.0
-        amplitude: 5.0
-        period: 1800
+        type: world_value
+        signal: occupancy
+        scale: 8.0
+        offset: 7.0
+        noise: 0.5
+        min: 5.0
+        max: 20.0
 
     - address: 12
       name: "Output Voltage"
       datatype: FLOAT32
       unit: V
       initial_value: 380.0
+      # 480V nominal, runs a bit under at partial speed.
       behavior:
         type: random_walk
-        center: 380.0
-        step_size: 5.0
-        min: 360.0
-        max: 400.0
+        center: 460.0
+        step_size: 3.0
+        min: 440.0
+        max: 485.0
 
     - address: 14
       name: "Output Power kW"
@@ -65,10 +85,13 @@ registers:
       unit: kW
       initial_value: 5.5
       behavior:
-        type: sine_wave
-        center: 5.0
-        amplitude: 3.0
-        period: 1800
+        type: world_value
+        signal: occupancy
+        scale: 4.0
+        offset: 2.0
+        noise: 0.3
+        min: 1.5
+        max: 9.0
 
     - address: 16
       name: "DC Bus Voltage"
@@ -77,10 +100,10 @@ registers:
       initial_value: 540.0
       behavior:
         type: random_walk
-        center: 540.0
-        step_size: 8.0
-        min: 510.0
-        max: 570.0
+        center: 650.0
+        step_size: 4.0
+        min: 620.0
+        max: 680.0
 
     # ── Thermal ──
     - address: 20
@@ -88,12 +111,15 @@ registers:
       datatype: FLOAT32
       unit: degC
       initial_value: 45.0
+      # Heatsink warms when drive is carrying load.
       behavior:
-        type: random_walk
-        center: 45.0
-        step_size: 3.0
+        type: world_value
+        signal: occupancy
+        scale: 20.0
+        offset: 30.0
+        noise: 1.5
         min: 25.0
-        max: 75.0
+        max: 70.0
 
     - address: 22
       name: "Motor Temperature"
@@ -101,9 +127,11 @@ registers:
       unit: degC
       initial_value: 55.0
       behavior:
-        type: random_walk
-        center: 55.0
-        step_size: 4.0
+        type: world_value
+        signal: occupancy
+        scale: 25.0
+        offset: 40.0
+        noise: 2.0
         min: 30.0
         max: 85.0
 

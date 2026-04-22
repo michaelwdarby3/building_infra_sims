@@ -1,45 +1,52 @@
 name: "Generic Heat Pump"
-description: "Air/water source heat pump with reversible operation"
+description: "Air-source heat pump — source side reads world OAT, load side tracks setpoint"
 equipment_class: "Heat_Pump"
 device_id: 7101
 port: 47808
 
+# Air-source heat pump in Boston. Source side is outdoor air (uses OAT with
+# small depression for evaporator/condenser exchange). Load side is a
+# hydronic buffer tank at ~110°F. COP drops with colder OAT (~3.5 mild, ~2.2
+# design winter).
+
 objects:
-  # ── Source side ──
+  # ── Source side (outdoor coil) ──
   - object_type: analog-input
     instance: 1
     name: "Source Entering Temp"
     present_value: 50.0
     units: degrees-fahrenheit
+    # Outdoor air entering the evaporator.
     behavior:
-      type: sine_wave
-      center: 50.0
-      amplitude: 15.0
-      period: 86400
+      type: world_value
+      signal: oat
+      noise: 0.5
 
   - object_type: analog-input
     instance: 2
     name: "Source Leaving Temp"
     present_value: 42.0
     units: degrees-fahrenheit
+    # ~8°F cooler than source entering after heat extraction.
     behavior:
-      type: sine_wave
-      center: 42.0
-      amplitude: 12.0
-      period: 86400
+      type: world_value
+      signal: oat
+      offset: -8.0
+      noise: 0.6
 
-  # ── Load side ──
+  # ── Load side (indoor buffer tank) ──
   - object_type: analog-input
     instance: 3
     name: "Load Entering Temp"
     present_value: 95.0
     units: degrees-fahrenheit
+    # Return from the load loop.
     behavior:
-      type: random_walk
-      center: 95.0
-      step_size: 3.0
-      min: 80.0
-      max: 115.0
+      type: tracks
+      source: "Setpoint"
+      bias: -15.0
+      noise: 0.8
+      lag_factor: 0.4
 
   - object_type: analog-input
     instance: 4
@@ -47,11 +54,11 @@ objects:
     present_value: 110.0
     units: degrees-fahrenheit
     behavior:
-      type: random_walk
-      center: 110.0
-      step_size: 3.0
-      min: 95.0
-      max: 125.0
+      type: tracks
+      source: "Setpoint"
+      bias: 0.0
+      noise: 0.6
+      lag_factor: 0.3
 
   # ── Performance ──
   - object_type: analog-value
@@ -59,18 +66,28 @@ objects:
     name: "COP"
     present_value: 3.5
     units: no-units
+    # COP drops linearly with OAT: ~4.0 at 50°F, ~2.2 at 0°F.
     behavior:
-      type: random_walk
-      center: 3.5
-      step_size: 0.3
-      min: 2.0
-      max: 5.5
+      type: conditional_on_oat
+      bands:
+        - oat_below: 10
+          value: 2.2
+        - oat_below: 30
+          value: 2.7
+        - oat_below: 50
+          value: 3.5
+        - oat_below: 200
+          value: 4.0
+      noise: 0.1
 
   - object_type: analog-value
     instance: 2
     name: "Setpoint"
     present_value: 110.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 110.0
 
   - object_type: analog-value
     instance: 3
@@ -87,11 +104,15 @@ objects:
     name: "Compressor Power"
     present_value: 12.5
     units: kilowatts
+    # Compressor draws more power as heating demand rises.
     behavior:
-      type: sine_wave
-      center: 12.0
-      amplitude: 8.0
-      period: 3600
+      type: world_value
+      signal: heating_demand
+      scale: 15.0
+      offset: 3.0
+      noise: 0.5
+      min: 1.5
+      max: 20.0
 
   # ── Status/Control ──
   - object_type: binary-input

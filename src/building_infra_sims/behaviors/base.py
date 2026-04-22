@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
 
+from ..world import get_world
+
 
 class ValueBehavior(ABC):
     """Base class for simulated value update patterns."""
@@ -221,6 +223,188 @@ class DeadbandSwitch(ValueBehavior):
         return self.output_value
 
 
+class WorldValue(ValueBehavior):
+    """Reads a scalar from the shared WorldState with optional affine transform.
+
+    `signal` is one of: "oat", "occupancy", "outdoor_rh", "solar_ghi",
+    "cooling_demand", "heating_demand". The returned value is
+    `signal * scale + offset + N(0, noise)`, clamped to [min_val, max_val]
+    if both are provided.
+    """
+
+    _SIGNALS = {
+        "oat": lambda w, t: w.oat_f(t),
+        "occupancy": lambda w, t: w.occupancy(t),
+        "outdoor_rh": lambda w, t: w.outdoor_rh(t),
+        "solar_ghi": lambda w, t: w.solar_ghi(t),
+        "cooling_demand": lambda w, t: w.cooling_demand(t),
+        "heating_demand": lambda w, t: w.heating_demand(t),
+    }
+
+    def __init__(
+        self,
+        signal: str,
+        scale: float = 1.0,
+        offset: float = 0.0,
+        noise: float = 0.0,
+        min_val: float | None = None,
+        max_val: float | None = None,
+    ):
+        if signal not in self._SIGNALS:
+            raise ValueError(
+                f"Unknown world signal {signal!r}. Expected one of {list(self._SIGNALS)}"
+            )
+        self.signal = signal
+        self.scale = scale
+        self.offset = offset
+        self.noise = noise
+        self.min_val = min_val
+        self.max_val = max_val
+        self._world = get_world()
+        # Anchor world clock at first update; advance by `elapsed` thereafter.
+        # This keeps production reads aligned with wall time (elapsed grows
+        # with monotonic time since server start) while letting tests sweep
+        # a simulated 24-hour window by passing increasing `elapsed`.
+        self._base_time: float | None = None
+
+    def update(self, elapsed: float) -> float:
+        if self._base_time is None:
+            self._base_time = time.time() - elapsed
+        raw = self._SIGNALS[self.signal](self._world, self._base_time + elapsed)
+        v = raw * self.scale + self.offset
+        if self.noise > 0:
+            v += random.gauss(0.0, self.noise)
+        if self.min_val is not None:
+            v = max(self.min_val, v)
+        if self.max_val is not None:
+            v = min(self.max_val, v)
+        return v
+
+
+class Tracks(ValueBehavior):
+    """Output follows another point's value with configurable lag and noise.
+
+    Models sensor dynamics: supply-air-temp tracks its setpoint with a time
+    constant, return air is warmer than zone by a few °F, etc. On each
+    update the tracked value decays toward `target + bias` at rate
+    `1 - lag_factor` per step, plus N(0, noise).
+    """
+
+    def __init__(
+        self,
+        source_behavior: ValueBehavior,
+        bias: float = 0.0,
+        noise: float = 0.0,
+        lag_factor: float = 0.0,
+        initial: float | None = None,
+    ):
+        self.source_behavior = source_behavior
+        self.bias = bias
+        self.noise = noise
+        self.lag_factor = max(0.0, min(0.95, lag_factor))
+        self._current: float | None = initial
+
+    def update(self, elapsed: float) -> float:
+        target = float(self.source_behavior.update(elapsed)) + self.bias
+        if self._current is None:
+            self._current = target
+        else:
+            self._current += (1.0 - self.lag_factor) * (target - self._current)
+        v = self._current
+        if self.noise > 0:
+            v += random.gauss(0.0, self.noise)
+        return v
+
+
+class ConditionalOnOAT(ValueBehavior):
+    """Pick a value from a list of bands keyed by outdoor air temperature.
+
+    `bands` is a list of {oat_below: float, value: float|ValueBehavior}
+    dicts, evaluated in order — the first band whose threshold is strictly
+    greater than the current OAT wins. The last entry is used as the
+    fallback when no band matches (use a very large `oat_below` to denote
+    "else"). Use this for OAT-reset setpoints (e.g. condensing-boiler OAR
+    curve, AHU SAT reset per G36).
+    """
+
+    def __init__(self, bands: list[dict], noise: float = 0.0):
+        if not bands:
+            raise ValueError("ConditionalOnOAT requires at least one band")
+        self.bands = bands
+        self.noise = noise
+        self._world = get_world()
+
+    def update(self, elapsed: float) -> float:
+        oat = self._world.oat_f(time.time())
+        chosen = self.bands[-1]
+        for band in self.bands:
+            if oat < band["oat_below"]:
+                chosen = band
+                break
+        val = chosen["value"]
+        if isinstance(val, ValueBehavior):
+            v = float(val.update(elapsed))
+        else:
+            v = float(val)
+        if self.noise > 0:
+            v += random.gauss(0.0, self.noise)
+        return v
+
+
+class OccupancyBinary(ValueBehavior):
+    """Binary output driven by occupancy threshold.
+
+    Returns `on_value` when `occupancy(t) > threshold` else `off_value`.
+    Good for fan status, lighting contactor — things that are on while the
+    building is in use and off overnight.
+    """
+
+    def __init__(
+        self,
+        threshold: float = 0.05,
+        on_value: Any = "active",
+        off_value: Any = "inactive",
+    ):
+        self.threshold = threshold
+        self.on_value = on_value
+        self.off_value = off_value
+        self._world = get_world()
+
+    def update(self, elapsed: float) -> Any:
+        return self.on_value if self._world.occupancy(time.time()) > self.threshold else self.off_value
+
+
+class MixedAir(ValueBehavior):
+    """Economizer mixed-air temp: weighted blend of OAT and return air temp.
+
+    `mat = (damper_pct/100) * OAT + (1 - damper_pct/100) * RAT`
+
+    Damper is read from another behavior (expected to return 0..100).
+    Return-air is either a constant (typical zone temp) or another behavior.
+    """
+
+    def __init__(
+        self,
+        damper_behavior: ValueBehavior,
+        return_air_behavior: ValueBehavior,
+        noise: float = 0.0,
+    ):
+        self.damper_behavior = damper_behavior
+        self.return_air_behavior = return_air_behavior
+        self.noise = noise
+        self._world = get_world()
+
+    def update(self, elapsed: float) -> float:
+        damper_pct = float(self.damper_behavior.update(elapsed))
+        rat = float(self.return_air_behavior.update(elapsed))
+        oat = self._world.oat_f(time.time())
+        frac = max(0.0, min(1.0, damper_pct / 100.0))
+        v = frac * oat + (1.0 - frac) * rat
+        if self.noise > 0:
+            v += random.gauss(0.0, self.noise)
+        return v
+
+
 def create_behavior(config: dict[str, Any]) -> ValueBehavior:
     """Factory: create a ValueBehavior from a profile config dict."""
     behavior_type = config["type"]
@@ -278,7 +462,28 @@ def create_behavior(config: dict[str, Any]) -> ValueBehavior:
             hold_max=config.get("hold_max", 1800.0),
         )
 
-    elif behavior_type in ("dew_point", "wet_bulb", "deadband_switch"):
+    elif behavior_type == "world_value":
+        return WorldValue(
+            signal=config["signal"],
+            scale=config.get("scale", 1.0),
+            offset=config.get("offset", 0.0),
+            noise=config.get("noise", 0.0),
+            min_val=config.get("min"),
+            max_val=config.get("max"),
+        )
+
+    elif behavior_type == "occupancy_binary":
+        return OccupancyBinary(
+            threshold=config.get("threshold", 0.05),
+            on_value=config.get("on_value", "active"),
+            off_value=config.get("off_value", "inactive"),
+        )
+
+    elif behavior_type == "conditional_on_oat":
+        # Value bands may be scalars or nested behaviors (resolved in second pass).
+        return _DeferredBehavior(config)
+
+    elif behavior_type in ("dew_point", "wet_bulb", "deadband_switch", "tracks", "mixed_air"):
         # These require source behaviors — resolved in a second pass by the
         # profile loader. Return a placeholder that stores the config.
         return _DeferredBehavior(config)
@@ -300,6 +505,22 @@ class _DeferredBehavior(ValueBehavior):
         )
 
 
+def _lookup(
+    name: str, behaviors_by_name: dict[str, ValueBehavior]
+) -> ValueBehavior:
+    """Resolve a named behavior, recursively resolving it first if still deferred.
+
+    Mutates `behaviors_by_name` so the resolved version replaces the placeholder
+    — prevents re-resolving and avoids infinite recursion on cycles (a cycle
+    would manifest as a KeyError on the second pass).
+    """
+    dep = behaviors_by_name[name]
+    if isinstance(dep, _DeferredBehavior):
+        dep = resolve_deferred(dep, behaviors_by_name)
+        behaviors_by_name[name] = dep
+    return dep
+
+
 def resolve_deferred(
     behavior: ValueBehavior,
     behaviors_by_name: dict[str, ValueBehavior],
@@ -314,17 +535,21 @@ def resolve_deferred(
 
     if btype == "dew_point":
         return DerivedDewPoint(
-            temp_behavior=behaviors_by_name[sources[0]],
-            rh_behavior=behaviors_by_name[sources[1]],
+            temp_behavior=_lookup(sources[0], behaviors_by_name),
+            rh_behavior=_lookup(sources[1], behaviors_by_name),
         )
     elif btype == "wet_bulb":
         return DerivedWetBulb(
-            temp_behavior=behaviors_by_name[sources[0]],
-            rh_behavior=behaviors_by_name[sources[1]],
+            temp_behavior=_lookup(sources[0], behaviors_by_name),
+            rh_behavior=_lookup(sources[1], behaviors_by_name),
         )
     elif btype == "deadband_switch":
-        source = behaviors_by_name[sources[0]]
-        output = behaviors_by_name.get(sources[1]) if len(sources) > 1 else None
+        source = _lookup(sources[0], behaviors_by_name)
+        output = (
+            _lookup(sources[1], behaviors_by_name)
+            if len(sources) > 1 and sources[1] in behaviors_by_name
+            else None
+        )
         return DeadbandSwitch(
             source_behavior=source,
             threshold=config.get("threshold", 72.0),
@@ -332,5 +557,29 @@ def resolve_deferred(
             output_behavior=output,
             output_value=config.get("output_value", 100.0),
         )
+    elif btype == "tracks":
+        return Tracks(
+            source_behavior=_lookup(config["source"], behaviors_by_name),
+            bias=config.get("bias", 0.0),
+            noise=config.get("noise", 0.0),
+            lag_factor=config.get("lag_factor", 0.0),
+            initial=config.get("initial"),
+        )
+    elif btype == "mixed_air":
+        return MixedAir(
+            damper_behavior=_lookup(config["damper_source"], behaviors_by_name),
+            return_air_behavior=_lookup(config["return_air_source"], behaviors_by_name),
+            noise=config.get("noise", 0.0),
+        )
+    elif btype == "conditional_on_oat":
+        # Inline values stay as floats; values that reference a named behavior
+        # (value: {source: "Other Point Name"}) are resolved here.
+        resolved_bands = []
+        for band in config["bands"]:
+            val = band["value"]
+            if isinstance(val, dict) and "source" in val:
+                val = _lookup(val["source"], behaviors_by_name)
+            resolved_bands.append({"oat_below": band["oat_below"], "value": val})
+        return ConditionalOnOAT(bands=resolved_bands, noise=config.get("noise", 0.0))
     else:
         raise ValueError(f"Cannot resolve deferred behavior type: {btype}")

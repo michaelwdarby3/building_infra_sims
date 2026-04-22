@@ -1,8 +1,11 @@
 name: "Generic Energy Meter (Demand)"
-description: "Advanced power meter with demand tracking and power quality"
+description: "Building-scale power meter — load tracks occupancy + cooling demand, typical commercial load shape"
 equipment_class: "Electrical_Meter"
 unit_id: 1
 port: 10511
+
+# Medium-office service meter (~60 kW peak, ~25 kW overnight base).
+# Current and power ride the occupancy + cooling demand envelope.
 
 registers:
   holding:
@@ -12,56 +15,73 @@ registers:
       datatype: FLOAT32
       unit: V
       initial_value: 277.0
+      # 277V L-N nominal (480V 3-phase Y). Utility stays in tight band.
       behavior:
         type: random_walk
         center: 277.0
-        step_size: 3.0
-        min: 265.0
-        max: 290.0
+        step_size: 1.5
+        min: 271.0
+        max: 283.0
 
     - address: 2
       name: "Current Avg"
       datatype: FLOAT32
       unit: A
       initial_value: 85.0
+      # ~35 A overnight base + up to ~75 A occupied load at 277V.
       behavior:
-        type: sine_wave
-        center: 80.0
-        amplitude: 30.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 75.0
+        offset: 35.0
+        noise: 2.0
+        min: 30.0
+        max: 120.0
 
     - address: 4
       name: "Total kW"
       datatype: FLOAT32
       unit: kW
       initial_value: 65.0
+      # ~25 kW base + up to ~60 kW modulation with occupancy.
       behavior:
-        type: sine_wave
-        center: 60.0
-        amplitude: 25.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 60.0
+        offset: 25.0
+        noise: 1.5
+        min: 20.0
+        max: 95.0
 
     - address: 6
       name: "Total kVA"
       datatype: FLOAT32
       unit: kVA
       initial_value: 70.0
+      # kVA tracks kW, slightly higher due to reactive load.
       behavior:
-        type: sine_wave
-        center: 65.0
-        amplitude: 25.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 65.0
+        offset: 28.0
+        noise: 1.5
+        min: 22.0
+        max: 100.0
 
     - address: 8
       name: "Total kVAR"
       datatype: FLOAT32
       unit: kVAR
       initial_value: 15.0
+      # Reactive load tracks occupancy lightly.
       behavior:
-        type: sine_wave
-        center: 12.0
-        amplitude: 8.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 15.0
+        offset: 6.0
+        noise: 0.8
+        min: 4.0
+        max: 25.0
 
     - address: 10
       name: "Power Factor"
@@ -71,9 +91,9 @@ registers:
       behavior:
         type: random_walk
         center: 0.92
-        step_size: 0.03
-        min: 0.75
-        max: 1.0
+        step_size: 0.01
+        min: 0.85
+        max: 0.98
 
     - address: 12
       name: "Frequency"
@@ -83,7 +103,7 @@ registers:
       behavior:
         type: random_walk
         center: 60.0
-        step_size: 0.025
+        step_size: 0.02
         min: 59.90
         max: 60.10
 
@@ -93,10 +113,11 @@ registers:
       datatype: FLOAT32
       unit: kWh
       initial_value: 456789.0
+      # Average ~45 kW × 3600 = 0.0125 kWh/s (kWh/s units).
       behavior:
         type: accumulator
         initial: 456789.0
-        rate_per_second: 0.017
+        rate_per_second: 0.0125
 
     - address: 22
       name: "Total kVARh"
@@ -115,10 +136,13 @@ registers:
       unit: kW
       initial_value: 58.0
       behavior:
-        type: sine_wave
-        center: 55.0
-        amplitude: 20.0
-        period: 900
+        type: world_value
+        signal: occupancy
+        scale: 55.0
+        offset: 25.0
+        noise: 1.0
+        min: 20.0
+        max: 90.0
 
     - address: 32
       name: "Demand kVA"
@@ -126,10 +150,13 @@ registers:
       unit: kVA
       initial_value: 63.0
       behavior:
-        type: sine_wave
-        center: 60.0
-        amplitude: 20.0
-        period: 900
+        type: world_value
+        signal: occupancy
+        scale: 60.0
+        offset: 27.0
+        noise: 1.0
+        min: 22.0
+        max: 95.0
 
     - address: 34
       name: "Max Demand kW"
@@ -149,9 +176,9 @@ registers:
       behavior:
         type: random_walk
         center: 4.5
-        step_size: 0.8
-        min: 0.5
-        max: 12.0
+        step_size: 0.3
+        min: 2.0
+        max: 8.0
 
     - address: 40
       name: "Demand Reset Counter"

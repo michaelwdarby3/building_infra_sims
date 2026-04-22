@@ -1,8 +1,13 @@
 name: "Generic Chiller"
-description: "Water-cooled chiller with entering/leaving temps and compressor staging"
+description: "Water-cooled chiller — CHW ΔT loop, compressor current tracks cooling demand"
 equipment_class: "Chiller"
 device_id: 5001
 port: 47808
+
+# Chilled water: 44°F supply, 54°F return (10°F ΔT, typical for comfort cooling).
+# Condenser water: 85°F supply, 95°F return (10°F ΔT lifted by cooling tower).
+# Compressor current ~200A at full load, ~40A at unloaded. Boston climate means
+# the chiller cycles heavily in summer, near-idle in winter.
 
 objects:
   # ── Chilled water ──
@@ -12,23 +17,24 @@ objects:
     present_value: 44.0
     units: degrees-fahrenheit
     behavior:
-      type: random_walk
-      center: 44.0
-      step_size: 1.2
-      min: 38.0
-      max: 49.0
+      type: tracks
+      source: "Chilled Water Setpoint"
+      bias: 0.0
+      noise: 0.4
+      lag_factor: 0.3
 
   - object_type: analog-input
     instance: 2
     name: "Chilled Water Return Temp"
     present_value: 54.0
     units: degrees-fahrenheit
+    # Return is supply + 10°F ΔT — tracks supply so return > supply every step.
     behavior:
-      type: random_walk
-      center: 54.0
-      step_size: 2.0
-      min: 50.0
-      max: 62.0
+      type: tracks
+      source: "Chilled Water Setpoint"
+      bias: 10.0
+      noise: 0.4
+      lag_factor: 0.4
 
   # ── Condenser water ──
   - object_type: analog-input
@@ -36,22 +42,28 @@ objects:
     name: "Condenser Water Supply Temp"
     present_value: 85.0
     units: degrees-fahrenheit
+    # Condenser supply from cooling tower — follows cooling_demand + OAT influence.
     behavior:
-      type: sine_wave
-      center: 85.0
-      amplitude: 8.0
-      period: 7200
+      type: world_value
+      signal: cooling_demand
+      scale: 10.0
+      offset: 78.0
+      noise: 0.8
+      min: 75.0
+      max: 95.0
 
   - object_type: analog-input
     instance: 4
     name: "Condenser Water Return Temp"
     present_value: 95.0
     units: degrees-fahrenheit
+    # Return = supply + 10°F lift across evaporator/compressor heat-of-rejection.
     behavior:
-      type: sine_wave
-      center: 95.0
-      amplitude: 8.0
-      period: 7200
+      type: tracks
+      source: "Condenser Water Supply Temp"
+      bias: 10.0
+      noise: 0.5
+      lag_factor: 0.3
 
   # ── Performance ──
   - object_type: analog-input
@@ -59,11 +71,15 @@ objects:
     name: "Compressor Current"
     present_value: 120.0
     units: amperes
+    # 40A idle + up to 160A at full cooling demand.
     behavior:
-      type: sine_wave
-      center: 120.0
-      amplitude: 40.0
-      period: 3600
+      type: world_value
+      signal: cooling_demand
+      scale: 160.0
+      offset: 40.0
+      noise: 5.0
+      min: 40.0
+      max: 200.0
 
   - object_type: analog-input
     instance: 11
@@ -73,21 +89,24 @@ objects:
     behavior:
       type: random_walk
       center: 62.0
-      step_size: 3.0
-      min: 50.0
-      max: 75.0
+      step_size: 1.5
+      min: 55.0
+      max: 70.0
 
   - object_type: analog-input
     instance: 12
     name: "Condenser Pressure"
     present_value: 180.0
     units: pounds-per-square-inch
+    # Condenser pressure rises with cooling demand.
     behavior:
-      type: random_walk
-      center: 180.0
-      step_size: 6.0
+      type: world_value
+      signal: cooling_demand
+      scale: 50.0
+      offset: 155.0
+      noise: 3.0
       min: 150.0
-      max: 210.0
+      max: 215.0
 
   - object_type: analog-input
     instance: 13
@@ -95,10 +114,13 @@ objects:
     present_value: 65.0
     units: percent
     behavior:
-      type: sine_wave
-      center: 60.0
-      amplitude: 30.0
-      period: 3600
+      type: world_value
+      signal: cooling_demand
+      scale: 100.0
+      offset: 0.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   # ── Commands ──
   - object_type: binary-output
@@ -127,12 +149,26 @@ objects:
     name: "Chilled Water Setpoint"
     present_value: 44.0
     units: degrees-fahrenheit
+    # G36 CHW reset: 44°F hot weather, up to 50°F cool weather to save energy.
+    behavior:
+      type: conditional_on_oat
+      bands:
+        - oat_below: 55
+          value: 50.0
+        - oat_below: 75
+          value: 46.0
+        - oat_below: 200
+          value: 44.0
+      noise: 0.2
 
   - object_type: analog-value
     instance: 2
     name: "Demand Limit"
     present_value: 100.0
     units: percent
+    behavior:
+      type: static
+      value: 100.0
 
   # ── Status ──
   - object_type: binary-input

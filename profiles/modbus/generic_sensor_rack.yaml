@@ -1,5 +1,5 @@
 name: "Generic Sensor Rack"
-description: "Multi-sensor module with temperature, humidity, CO2, and pressure"
+description: "Multi-sensor module — temp/RH/CO2/pressure, outdoor signals from world"
 equipment_class: "Sensor"
 unit_id: 1
 port: 10504
@@ -13,10 +13,11 @@ registers:
       unit: degF
       initial_value: 72.5
       behavior:
-        type: sine_wave
+        type: random_walk
         center: 72.0
-        amplitude: 6.0
-        period: 7200
+        step_size: 0.3
+        min: 68.0
+        max: 78.0
 
     - address: 2
       name: "Zone 1 Humidity"
@@ -26,20 +27,24 @@ registers:
       behavior:
         type: random_walk
         center: 45.0
-        step_size: 1.0
+        step_size: 0.8
         min: 30.0
-        max: 65.0
+        max: 60.0
 
     - address: 4
       name: "Zone 1 CO2"
       datatype: FLOAT32
       unit: ppm
       initial_value: 450.0
+      # Rises with occupancy — empty ≈ 420 ppm outdoor, peak occupancy ≈ 1100 ppm.
       behavior:
-        type: sine_wave
-        center: 500.0
-        amplitude: 200.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 700.0
+        offset: 420.0
+        noise: 20.0
+        min: 400.0
+        max: 1500.0
 
     # ── Zone 2 ──
     - address: 10
@@ -48,10 +53,11 @@ registers:
       unit: degF
       initial_value: 71.0
       behavior:
-        type: sine_wave
+        type: random_walk
         center: 71.0
-        amplitude: 6.0
-        period: 7200
+        step_size: 0.3
+        min: 67.0
+        max: 77.0
 
     - address: 12
       name: "Zone 2 Humidity"
@@ -61,9 +67,9 @@ registers:
       behavior:
         type: random_walk
         center: 48.0
-        step_size: 1.0
+        step_size: 0.8
         min: 30.0
-        max: 65.0
+        max: 60.0
 
     - address: 14
       name: "Zone 2 CO2"
@@ -71,10 +77,13 @@ registers:
       unit: ppm
       initial_value: 480.0
       behavior:
-        type: sine_wave
-        center: 520.0
-        amplitude: 250.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 800.0
+        offset: 430.0
+        noise: 25.0
+        min: 400.0
+        max: 1600.0
 
     # ── Building pressure ──
     - address: 20
@@ -85,7 +94,7 @@ registers:
       behavior:
         type: random_walk
         center: 0.05
-        step_size: 0.015
+        step_size: 0.01
         min: 0.0
         max: 0.12
 
@@ -93,23 +102,21 @@ registers:
       name: "Outdoor Temperature"
       datatype: FLOAT32
       unit: degF
-      initial_value: 85.0
+      initial_value: 55.0
       behavior:
-        type: sine_wave
-        center: 82.0
-        amplitude: 15.0
-        period: 86400
+        type: world_value
+        signal: oat
+        noise: 0.4
 
     - address: 24
       name: "Outdoor Humidity"
       datatype: FLOAT32
       unit: "%RH"
-      initial_value: 60.0
+      initial_value: 55.0
       behavior:
-        type: sine_wave
-        center: 55.0
-        amplitude: 20.0
-        period: 86400
+        type: world_value
+        signal: outdoor_rh
+        noise: 1.5
 
   holding:
     - address: 0

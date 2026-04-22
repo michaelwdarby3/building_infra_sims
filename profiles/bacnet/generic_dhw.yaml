@@ -1,8 +1,12 @@
 name: "Generic Domestic Hot Water"
-description: "Domestic hot water system with storage tank, burner/element, and recirc pump"
+description: "DHW system with storage tank, burner, and recirc pump — cold-water inlet tracks season"
 equipment_class: "Hot_Water_System"
 device_id: 6201
 port: 47808
+
+# Tank upper 135°F, lower 120°F (stratified). Recirc loop: 130°F supply,
+# 110°F return. Cold-water main in Boston varies 45–60°F seasonally — tied
+# loosely to OAT with heavy damping. Flow rate follows occupancy.
 
 objects:
   # ── Temperature sensors ──
@@ -12,23 +16,24 @@ objects:
     present_value: 135.0
     units: degrees-fahrenheit
     behavior:
-      type: random_walk
-      center: 135.0
-      step_size: 3.0
-      min: 115.0
-      max: 148.0
+      type: tracks
+      source: "Setpoint"
+      bias: 5.0
+      noise: 0.8
+      lag_factor: 0.6
 
   - object_type: analog-input
     instance: 2
     name: "Tank Temp Lower"
-    present_value: 125.0
+    present_value: 120.0
     units: degrees-fahrenheit
+    # 10°F stratified below upper.
     behavior:
-      type: random_walk
-      center: 125.0
-      step_size: 4.0
-      min: 95.0
-      max: 145.0
+      type: tracks
+      source: "Setpoint"
+      bias: -10.0
+      noise: 1.2
+      lag_factor: 0.7
 
   - object_type: analog-input
     instance: 3
@@ -36,47 +41,55 @@ objects:
     present_value: 130.0
     units: degrees-fahrenheit
     behavior:
-      type: random_walk
-      center: 130.0
-      step_size: 3.0
-      min: 110.0
-      max: 145.0
+      type: tracks
+      source: "Setpoint"
+      bias: 0.0
+      noise: 0.6
+      lag_factor: 0.3
 
   - object_type: analog-input
     instance: 4
     name: "Return Temp"
     present_value: 110.0
     units: degrees-fahrenheit
+    # 20°F loop drop through fixtures.
     behavior:
-      type: random_walk
-      center: 110.0
-      step_size: 3.5
-      min: 85.0
-      max: 130.0
+      type: tracks
+      source: "Setpoint"
+      bias: -20.0
+      noise: 0.8
+      lag_factor: 0.4
 
   - object_type: analog-input
     instance: 5
     name: "Inlet Cold Water Temp"
     present_value: 55.0
     units: degrees-fahrenheit
+    # Boston main-water temp varies with season — roughly 45°F winter,
+    # 60°F summer. Use damped OAT as a proxy, with heavy ground attenuation.
     behavior:
-      type: random_walk
-      center: 55.0
-      step_size: 2.0
+      type: world_value
+      signal: oat
+      scale: 0.25
+      offset: 40.0
+      noise: 0.5
       min: 40.0
-      max: 70.0
+      max: 68.0
 
   - object_type: analog-input
     instance: 6
     name: "Flow Rate"
     present_value: 5.0
     units: gallons-per-minute
+    # DHW demand follows occupancy (offices: morning/lunch/afternoon use).
     behavior:
-      type: random_walk
-      center: 5.0
-      step_size: 2.5
-      min: 0.0
-      max: 20.0
+      type: world_value
+      signal: occupancy
+      scale: 8.0
+      offset: 1.0
+      noise: 1.0
+      min: 0.5
+      max: 15.0
 
   # ── Commands ──
   - object_type: analog-output
@@ -84,6 +97,15 @@ objects:
     name: "Burner CMD"
     present_value: 50.0
     units: percent
+    # Burner fires harder when tank loses heat (occupied-hour draws).
+    behavior:
+      type: world_value
+      signal: occupancy
+      scale: 60.0
+      offset: 15.0
+      noise: 3.0
+      min: 10.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 2
@@ -134,12 +156,18 @@ objects:
     name: "Setpoint"
     present_value: 130.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 130.0
 
   - object_type: analog-value
     instance: 2
     name: "High Limit"
     present_value: 160.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 160.0
 
   # ── Mode ──
   - object_type: multi-state-value

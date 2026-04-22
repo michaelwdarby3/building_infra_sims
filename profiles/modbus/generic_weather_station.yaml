@@ -1,5 +1,5 @@
 name: "Generic Weather Station"
-description: "Outdoor weather monitoring station with temp, humidity, wind, and solar"
+description: "Outdoor weather monitoring — all signals driven by Boston WorldState"
 equipment_class: "Weather_Station"
 unit_id: 1
 port: 10512
@@ -10,12 +10,11 @@ registers:
       name: "Outdoor Temperature"
       datatype: FLOAT32
       unit: degF
-      initial_value: 78.0
+      initial_value: 55.0
       behavior:
-        type: sine_wave
-        center: 78.0
-        amplitude: 15.0
-        period: 86400
+        type: world_value
+        signal: oat
+        noise: 0.3
 
     - address: 2
       name: "Outdoor Humidity"
@@ -23,10 +22,9 @@ registers:
       unit: "%RH"
       initial_value: 55.0
       behavior:
-        type: sine_wave
-        center: 55.0
-        amplitude: 20.0
-        period: 86400
+        type: world_value
+        signal: outdoor_rh
+        noise: 1.5
 
     - address: 4
       name: "Barometric Pressure"
@@ -36,7 +34,7 @@ registers:
       behavior:
         type: random_walk
         center: 29.92
-        step_size: 0.08
+        step_size: 0.02
         min: 29.40
         max: 30.60
 
@@ -48,9 +46,9 @@ registers:
       behavior:
         type: random_walk
         center: 8.0
-        step_size: 4.0
+        step_size: 2.0
         min: 0.0
-        max: 45.0
+        max: 35.0
 
     - address: 8
       name: "Wind Direction"
@@ -60,7 +58,7 @@ registers:
       behavior:
         type: random_walk
         center: 180.0
-        step_size: 15.0
+        step_size: 10.0
         min: 0.0
         max: 360.0
 
@@ -72,37 +70,40 @@ registers:
       behavior:
         type: random_walk
         center: 0.0
-        step_size: 0.02
+        step_size: 0.015
         min: 0.0
-        max: 0.5
+        max: 0.3
 
     - address: 12
       name: "Solar Radiation"
       datatype: FLOAT32
       unit: W/m2
-      initial_value: 450.0
+      initial_value: 0.0
       behavior:
-        type: sine_wave
-        center: 400.0
-        amplitude: 400.0
-        period: 86400
+        type: world_value
+        signal: solar_ghi
+        noise: 15.0
+        min: 0.0
 
     - address: 14
       name: "UV Index"
       datatype: FLOAT32
       unit: index
-      initial_value: 5.0
+      initial_value: 0.0
+      # UV rises with solar — ~1 UV per 100 W/m² GHI.
       behavior:
-        type: sine_wave
-        center: 4.0
-        amplitude: 4.0
-        period: 86400
+        type: world_value
+        signal: solar_ghi
+        scale: 0.01
+        noise: 0.2
+        min: 0.0
+        max: 11.0
 
     - address: 16
       name: "Dew Point"
       datatype: FLOAT32
       unit: degF
-      initial_value: 60.0
+      initial_value: 45.0
       behavior:
         type: dew_point
         sources: ["Outdoor Temperature", "Outdoor Humidity"]
@@ -111,7 +112,7 @@ registers:
       name: "Wet Bulb Temp"
       datatype: FLOAT32
       unit: degF
-      initial_value: 65.0
+      initial_value: 50.0
       behavior:
         type: wet_bulb
         sources: ["Outdoor Temperature", "Outdoor Humidity"]

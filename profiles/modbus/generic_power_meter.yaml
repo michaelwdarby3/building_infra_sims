@@ -1,8 +1,11 @@
 name: "Generic Power Meter"
-description: "3-phase power meter with typical Modbus register map"
+description: "3-phase power meter with typical Modbus register map — small-office profile"
 equipment_class: "Electrical_Meter"
 unit_id: 1
 port: 10502
+
+# Same small-office load model as the BACnet meter. See
+# profiles/bacnet/generic_meter.yaml for the calibration rationale.
 
 registers:
   holding:
@@ -14,9 +17,9 @@ registers:
       behavior:
         type: random_walk
         center: 120.0
-        step_size: 1.5
-        min: 115.0
-        max: 125.0
+        step_size: 0.5
+        min: 117.0
+        max: 123.0
 
     - address: 2
       name: "Voltage Phase B"
@@ -26,9 +29,9 @@ registers:
       behavior:
         type: random_walk
         center: 120.0
-        step_size: 1.5
-        min: 115.0
-        max: 125.0
+        step_size: 0.5
+        min: 117.0
+        max: 123.0
 
     - address: 4
       name: "Voltage Phase C"
@@ -38,57 +41,57 @@ registers:
       behavior:
         type: random_walk
         center: 120.0
-        step_size: 1.5
-        min: 115.0
-        max: 125.0
+        step_size: 0.5
+        min: 117.0
+        max: 123.0
 
     - address: 6
       name: "Current Phase A"
       datatype: FLOAT32
       unit: A
-      initial_value: 15.2
+      initial_value: 18.0
       behavior:
         type: phased_sine_wave
-        center: 15.0
-        amplitude: 5.0
-        period: 1800
+        center: 18.0
+        amplitude: 8.0
+        period: 86400
         phase_offset: 0.0
 
     - address: 8
       name: "Current Phase B"
       datatype: FLOAT32
       unit: A
-      initial_value: 14.8
+      initial_value: 17.5
       behavior:
         type: phased_sine_wave
-        center: 15.0
-        amplitude: 5.0
-        period: 1800
+        center: 18.0
+        amplitude: 8.0
+        period: 86400
         phase_offset: 2.094
 
     - address: 10
       name: "Current Phase C"
       datatype: FLOAT32
       unit: A
-      initial_value: 15.0
+      initial_value: 18.2
       behavior:
         type: phased_sine_wave
-        center: 15.0
-        amplitude: 5.0
-        period: 1800
+        center: 18.0
+        amplitude: 8.0
+        period: 86400
         phase_offset: 4.189
 
     - address: 20
       name: "Power Factor"
       datatype: FLOAT32
       unit: PF
-      initial_value: 0.95
+      initial_value: 0.92
       behavior:
         type: random_walk
-        center: 0.95
-        step_size: 0.03
-        min: 0.82
-        max: 1.0
+        center: 0.92
+        step_size: 0.01
+        min: 0.85
+        max: 0.98
 
     - address: 22
       name: "Frequency"
@@ -98,7 +101,7 @@ registers:
       behavior:
         type: random_walk
         center: 60.0
-        step_size: 0.025
+        step_size: 0.015
         min: 59.90
         max: 60.10
 
@@ -106,12 +109,15 @@ registers:
       name: "Total kW"
       datatype: FLOAT32
       unit: kW
-      initial_value: 5.4
+      initial_value: 5.0
       behavior:
-        type: sine_wave
-        center: 5.0
-        amplitude: 3.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 7.0
+        offset: 2.0
+        noise: 0.25
+        min: 1.5
+        max: 10.0
 
     - address: 42
       name: "Total kVAR"
@@ -119,10 +125,13 @@ registers:
       unit: kVAR
       initial_value: 1.2
       behavior:
-        type: sine_wave
-        center: 1.0
-        amplitude: 1.5
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 1.5
+        offset: 0.5
+        noise: 0.15
+        min: 0.3
+        max: 2.5
 
     - address: 50
       name: "Total kWh"
@@ -132,7 +141,7 @@ registers:
       behavior:
         type: accumulator
         initial: 123456.0
-        rate_per_second: 0.0015
+        rate_per_second: 0.002
 
   input:
     - address: 0

@@ -1,8 +1,11 @@
 name: "Generic Pump"
-description: "Variable speed centrifugal pump with pressure and flow monitoring"
+description: "Variable speed centrifugal pump — speed follows occupancy, ΔP preserved"
 equipment_class: "Pump"
 unit_id: 1
 port: 10522
+
+# Preserves test_discharge_gt_suction_on_average: discharge center 37 PSI,
+# suction center 12 PSI, independent random walks.
 
 registers:
   holding:
@@ -12,13 +15,13 @@ registers:
       unit: "%"
       initial_value: 70.0
       behavior:
-        type: schedule
-        schedule:
-          "06:00": 80.0
-          "12:00": 90.0
-          "18:00": 70.0
-          "22:00": 50.0
-        default: 50.0
+        type: world_value
+        signal: occupancy
+        scale: 60.0
+        offset: 30.0
+        noise: 2.0
+        min: 30.0
+        max: 100.0
 
     - address: 2
       name: "Run CMD"
@@ -56,21 +59,26 @@ registers:
       unit: "%"
       initial_value: 68.0
       behavior:
-        type: sine_wave
-        center: 68.0
-        amplitude: 14.0
-        period: 3600
+        type: tracks
+        source: "Speed CMD"
+        bias: -2.0
+        noise: 1.0
+        lag_factor: 0.4
 
     - address: 3
       name: "Flow Rate"
       datatype: FLOAT32
       unit: GPM
       initial_value: 120.0
+      # Flow scales with speed, which scales with occupancy.
       behavior:
-        type: sine_wave
-        center: 120.0
-        amplitude: 40.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 100.0
+        offset: 60.0
+        noise: 4.0
+        min: 40.0
+        max: 180.0
 
     - address: 5
       name: "Differential Pressure"
@@ -80,9 +88,9 @@ registers:
       behavior:
         type: random_walk
         center: 25.0
-        step_size: 2.0
-        min: 15.0
-        max: 35.0
+        step_size: 1.0
+        min: 18.0
+        max: 32.0
 
     - address: 7
       name: "Suction Pressure"
@@ -92,9 +100,9 @@ registers:
       behavior:
         type: random_walk
         center: 12.0
-        step_size: 1.0
-        min: 6.0
-        max: 18.0
+        step_size: 0.5
+        min: 8.0
+        max: 16.0
 
     - address: 9
       name: "Discharge Pressure"
@@ -104,9 +112,9 @@ registers:
       behavior:
         type: random_walk
         center: 37.0
-        step_size: 2.0
-        min: 25.0
-        max: 50.0
+        step_size: 1.2
+        min: 28.0
+        max: 48.0
 
     - address: 11
       name: "Motor Current"
@@ -114,10 +122,13 @@ registers:
       unit: A
       initial_value: 18.0
       behavior:
-        type: sine_wave
-        center: 18.0
-        amplitude: 6.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 10.0
+        offset: 12.0
+        noise: 1.0
+        min: 8.0
+        max: 26.0
 
     - address: 13
       name: "Motor Temp"
@@ -127,9 +138,9 @@ registers:
       behavior:
         type: random_walk
         center: 155.0
-        step_size: 5.0
-        min: 110.0
-        max: 210.0
+        step_size: 2.0
+        min: 130.0
+        max: 185.0
 
     - address: 15
       name: "Run Hours"

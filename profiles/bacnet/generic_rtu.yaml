@@ -1,5 +1,5 @@
 name: "Generic Rooftop Unit"
-description: "Packaged rooftop unit with DX cooling, gas heat, and economizer"
+description: "Packaged rooftop unit with DX cooling, gas heat, and economizer — Boston climate"
 equipment_class: "AHU"
 device_id: 6001
 port: 47808
@@ -11,33 +11,40 @@ objects:
     name: "Supply Air Temp"
     present_value: 55.0
     units: degrees-fahrenheit
+    # Cooling season SAT ~55°F; heating season mid-70s at discharge.
     behavior:
-      type: sine_wave
-      center: 55.0
-      amplitude: 7.0
-      period: 3600
+      type: conditional_on_oat
+      bands:
+        - oat_below: 30
+          value: 75.0
+        - oat_below: 55
+          value: 65.0
+        - oat_below: 200
+          value: 55.0
+      noise: 1.5
 
   - object_type: analog-input
     instance: 2
     name: "Return Air Temp"
     present_value: 74.0
     units: degrees-fahrenheit
+    # Return plenum ~2°F above zone.
     behavior:
-      type: sine_wave
-      center: 74.0
-      amplitude: 5.0
-      period: 7200
+      type: tracks
+      source: "Cooling Setpoint"
+      bias: -1.0
+      noise: 0.4
+      lag_factor: 0.5
 
   - object_type: analog-input
     instance: 3
     name: "Outside Air Temp"
-    present_value: 85.0
+    present_value: 55.0
     units: degrees-fahrenheit
     behavior:
-      type: sine_wave
-      center: 82.0
-      amplitude: 12.0
-      period: 86400
+      type: world_value
+      signal: oat
+      noise: 0.5
 
   - object_type: analog-input
     instance: 4
@@ -45,10 +52,10 @@ objects:
     present_value: 68.0
     units: degrees-fahrenheit
     behavior:
-      type: sine_wave
-      center: 68.0
-      amplitude: 5.0
-      period: 3600
+      type: mixed_air
+      damper_source: "OA Damper CMD"
+      return_air_source: "Return Air Temp"
+      noise: 0.4
 
   - object_type: analog-input
     instance: 5
@@ -56,11 +63,11 @@ objects:
     present_value: 54.0
     units: degrees-fahrenheit
     behavior:
-      type: random_walk
-      center: 54.0
-      step_size: 2.0
-      min: 46.0
-      max: 62.0
+      type: tracks
+      source: "Supply Air Temp"
+      bias: -1.0
+      noise: 0.5
+      lag_factor: 0.3
 
   # ── Commands ──
   - object_type: analog-output
@@ -68,24 +75,60 @@ objects:
     name: "Cooling Stage CMD"
     present_value: 1.0
     units: no-units
+    # 0=off, 1=stage1, 2=stage2. Ramp with cooling_demand.
+    behavior:
+      type: world_value
+      signal: cooling_demand
+      scale: 2.0
+      offset: 0.0
+      noise: 0.05
+      min: 0.0
+      max: 2.0
 
   - object_type: analog-output
     instance: 2
     name: "Heating CMD"
     present_value: 0.0
     units: percent
+    behavior:
+      type: world_value
+      signal: heating_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 3
     name: "OA Damper CMD"
     present_value: 25.0
     units: percent
+    # Same G36 economizer bands as AHU.
+    behavior:
+      type: conditional_on_oat
+      bands:
+        - oat_below: 50
+          value: 25
+        - oat_below: 65
+          value: 80
+        - oat_below: 200
+          value: 25
+      noise: 2.0
 
   - object_type: analog-output
     instance: 4
     name: "Supply Fan Speed CMD"
     present_value: 75.0
     units: percent
+    # Fan slows off-hours; always on when occupied.
+    behavior:
+      type: world_value
+      signal: occupancy
+      scale: 60.0
+      offset: 30.0
+      noise: 2.0
+      min: 30.0
+      max: 100.0
 
   # ── Status ──
   - object_type: binary-input
@@ -93,14 +136,14 @@ objects:
     name: "Supply Fan Status"
     present_value: active
     behavior:
-      type: binary_toggle
-      on_duration: 1800
-      off_duration: 120
+      type: occupancy_binary
+      threshold: 0.05
 
   - object_type: binary-input
     instance: 2
     name: "Compressor 1 Status"
     present_value: active
+    # Stage-1 compressor runs whenever there's meaningful cooling demand.
     behavior:
       type: binary_toggle
       on_duration: 900
@@ -130,18 +173,27 @@ objects:
     name: "Cooling Setpoint"
     present_value: 74.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 74.0
 
   - object_type: analog-value
     instance: 2
     name: "Heating Setpoint"
     present_value: 68.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 68.0
 
   - object_type: analog-value
     instance: 3
     name: "Economizer Changeover Temp"
     present_value: 65.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 65.0
 
   # ── Mode ──
   - object_type: multi-state-value

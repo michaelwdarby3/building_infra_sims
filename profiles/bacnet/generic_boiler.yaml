@@ -1,8 +1,12 @@
 name: "Generic Boiler"
-description: "Hot water boiler with supply/return temperatures and firing stages"
+description: "Hot water boiler — OAT-reset supply temp, firing rate tracks heating demand"
 equipment_class: "Boiler"
 device_id: 4001
 port: 47808
+
+# Calibrated for a Boston shoulder/winter load. OAT-reset curve (ASHRAE G36 §5.18):
+# design at 0°F OAT → 180°F supply, 60°F OAT → 140°F supply, linear in between.
+# Return is 20°F cooler (typical 20-degree ΔT loop).
 
 objects:
   # ── Temperature sensors ──
@@ -11,37 +15,40 @@ objects:
     name: "Supply Water Temperature"
     present_value: 160.0
     units: degrees-fahrenheit
-    description: "Boiler supply water temperature"
     behavior:
-      type: random_walk
-      center: 160.0
-      step_size: 3.0
-      min: 140.0
-      max: 180.0
+      type: tracks
+      source: "Supply Setpoint"
+      bias: 0.0
+      noise: 1.0
+      lag_factor: 0.3
 
   - object_type: analog-input
     instance: 2
     name: "Return Water Temperature"
     present_value: 140.0
     units: degrees-fahrenheit
+    # 20°F loop ΔT.
     behavior:
-      type: random_walk
-      center: 140.0
-      step_size: 2.5
-      min: 120.0
-      max: 155.0
+      type: tracks
+      source: "Supply Setpoint"
+      bias: -20.0
+      noise: 1.2
+      lag_factor: 0.4
 
   - object_type: analog-input
     instance: 3
     name: "Flue Gas Temperature"
     present_value: 350.0
     units: degrees-fahrenheit
+    # Stack temp tracks firing rate loosely — 250°F at low fire, 450°F at high fire.
     behavior:
-      type: random_walk
-      center: 350.0
-      step_size: 15.0
-      min: 200.0
-      max: 450.0
+      type: world_value
+      signal: heating_demand
+      scale: 200.0
+      offset: 250.0
+      noise: 8.0
+      min: 220.0
+      max: 480.0
 
   - object_type: analog-input
     instance: 4
@@ -51,9 +58,9 @@ objects:
     behavior:
       type: random_walk
       center: 15.0
-      step_size: 1.0
-      min: 10.0
-      max: 20.0
+      step_size: 0.3
+      min: 12.0
+      max: 18.0
 
   # ── Commands ──
   - object_type: binary-output
@@ -67,7 +74,14 @@ objects:
     name: "Firing Rate Command"
     present_value: 50.0
     units: percent
-    description: "Boiler firing rate setpoint"
+    description: "Boiler firing rate — follows heating demand"
+    behavior:
+      type: world_value
+      signal: heating_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   # ── Setpoints ──
   - object_type: analog-value
@@ -75,12 +89,28 @@ objects:
     name: "Supply Setpoint"
     present_value: 160.0
     units: degrees-fahrenheit
+    # G36 OAT-reset curve.
+    behavior:
+      type: conditional_on_oat
+      bands:
+        - oat_below: 10
+          value: 180
+        - oat_below: 30
+          value: 170
+        - oat_below: 50
+          value: 155
+        - oat_below: 200
+          value: 140
+      noise: 0.5
 
   - object_type: analog-value
     instance: 2
     name: "High Limit Cutout"
     present_value: 200.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 200.0
 
   # ── Status ──
   - object_type: binary-input

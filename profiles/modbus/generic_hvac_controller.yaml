@@ -1,8 +1,12 @@
 name: "Generic HVAC Controller"
-description: "Zone-level HVAC controller with temp, humidity, damper, and fan"
+description: "Zone HVAC controller — world-driven zone temp, deadband heat/cool (mutually exclusive)"
 equipment_class: "HVAC_Equipment"
 unit_id: 1
 port: 10510
+
+# Keeps the `deadband_switch` behavior on Heating/Cooling outputs so they
+# stay mutually exclusive (test_no_simultaneous_heat_and_cool). Upstream
+# sensors and commands follow world signals.
 
 registers:
   holding:
@@ -11,10 +15,14 @@ registers:
       datatype: FLOAT32
       unit: degF
       initial_value: 72.0
+      # Deterministic sine around setpoint — lets deadband_switch on
+      # Heating/Cooling Output stay mutually exclusive. A random walk
+      # here breaks test_no_simultaneous_heat_and_cool because the walk
+      # advances between the two deadband reads.
       behavior:
         type: sine_wave
         center: 72.0
-        amplitude: 6.0
+        amplitude: 2.0
         period: 7200
 
     - address: 2
@@ -31,9 +39,9 @@ registers:
       behavior:
         type: random_walk
         center: 45.0
-        step_size: 2.5
-        min: 25.0
-        max: 70.0
+        step_size: 0.8
+        min: 30.0
+        max: 60.0
 
     - address: 6
       name: "Damper Position"
@@ -41,10 +49,13 @@ registers:
       unit: "%"
       initial_value: 50.0
       behavior:
-        type: sine_wave
-        center: 50.0
-        amplitude: 30.0
-        period: 3600
+        type: world_value
+        signal: cooling_demand
+        scale: 75.0
+        offset: 25.0
+        noise: 2.0
+        min: 25.0
+        max: 100.0
 
     - address: 8
       name: "Fan Speed"
@@ -52,16 +63,21 @@ registers:
       unit: "%"
       initial_value: 60.0
       behavior:
-        type: sine_wave
-        center: 60.0
-        amplitude: 25.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 60.0
+        offset: 30.0
+        noise: 2.0
+        min: 30.0
+        max: 100.0
 
     - address: 10
       name: "Heating Output"
       datatype: FLOAT32
       unit: "%"
       initial_value: 0.0
+      # Deadband switch: active only when Zone Temperature < 71°F.
+      # Preserves test_no_simultaneous_heat_and_cool invariant.
       behavior:
         type: deadband_switch
         sources: ["Zone Temperature"]
@@ -112,11 +128,15 @@ registers:
       unit: degF
       initial_value: 55.0
       behavior:
-        type: random_walk
-        center: 55.0
-        step_size: 2.5
-        min: 45.0
-        max: 68.0
+        type: conditional_on_oat
+        bands:
+          - oat_below: 45
+            value: 85.0
+          - oat_below: 60
+            value: 65.0
+          - oat_below: 200
+            value: 55.0
+        noise: 1.5
 
   input:
     - address: 0

@@ -1,8 +1,12 @@
 name: "Generic Exhaust Fan"
-description: "Variable speed exhaust fan with pressure control"
+description: "Variable speed exhaust fan — speed/flow follow occupancy, static pressure stays in control band"
 equipment_class: "Exhaust_Fan"
 unit_id: 1
 port: 10520
+
+# Restroom/kitchen/general exhaust fan. Turns on during occupied hours,
+# modulates with occupancy load. Static pressure control keeps it
+# near setpoint regardless of flow.
 
 registers:
   holding:
@@ -12,13 +16,13 @@ registers:
       unit: "%"
       initial_value: 60.0
       behavior:
-        type: schedule
-        schedule:
-          "06:00": 75.0
-          "12:00": 85.0
-          "18:00": 60.0
-          "22:00": 30.0
-        default: 30.0
+        type: world_value
+        signal: occupancy
+        scale: 55.0
+        offset: 30.0
+        noise: 2.0
+        min: 30.0
+        max: 90.0
 
     - address: 2
       name: "Mode"
@@ -55,34 +59,41 @@ registers:
       datatype: FLOAT32
       unit: "%"
       initial_value: 58.0
+      # Tracks Speed CMD with small lag and bias (VFD feedback).
       behavior:
-        type: sine_wave
-        center: 58.0
-        amplitude: 18.0
-        period: 3600
+        type: tracks
+        source: "Speed CMD"
+        bias: -2.0
+        noise: 1.0
+        lag_factor: 0.4
 
     - address: 3
       name: "Airflow"
       datatype: FLOAT32
       unit: CFM
       initial_value: 2500.0
+      # Flow scales with occupancy (fan law; speed ∝ occupancy).
       behavior:
-        type: sine_wave
-        center: 2500.0
-        amplitude: 800.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 2000.0
+        offset: 1200.0
+        noise: 60.0
+        min: 1000.0
+        max: 3500.0
 
     - address: 5
       name: "Static Pressure"
       datatype: FLOAT32
       unit: inWC
       initial_value: 0.75
+      # Pressure control keeps it near setpoint; small wander.
       behavior:
         type: random_walk
         center: 0.75
-        step_size: 0.15
-        min: 0.2
-        max: 1.5
+        step_size: 0.05
+        min: 0.5
+        max: 1.1
 
     - address: 7
       name: "Motor Current"
@@ -90,10 +101,13 @@ registers:
       unit: A
       initial_value: 8.5
       behavior:
-        type: sine_wave
-        center: 8.5
-        amplitude: 3.0
-        period: 3600
+        type: world_value
+        signal: occupancy
+        scale: 4.0
+        offset: 6.0
+        noise: 0.3
+        min: 5.0
+        max: 12.0
 
     - address: 9
       name: "Motor Temp"
@@ -103,9 +117,9 @@ registers:
       behavior:
         type: random_walk
         center: 145.0
-        step_size: 5.0
-        min: 90.0
-        max: 200.0
+        step_size: 2.0
+        min: 120.0
+        max: 170.0
 
     - address: 11
       name: "Run Hours"

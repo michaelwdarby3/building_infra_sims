@@ -1,5 +1,5 @@
 name: "Generic Fan Coil Unit"
-description: "2-pipe or 4-pipe fan coil unit with chilled and hot water valves"
+description: "4-pipe fan coil — CHW follows cooling demand, HW follows heating demand"
 equipment_class: "FCU"
 device_id: 6101
 port: 47808
@@ -11,23 +11,30 @@ objects:
     name: "Room Temperature"
     present_value: 72.0
     units: degrees-fahrenheit
+    # Room temp hovers near setpoint with a small drift.
     behavior:
-      type: sine_wave
-      center: 72.0
-      amplitude: 5.0
-      period: 7200
+      type: tracks
+      source: "Cooling Setpoint"
+      bias: -2.0
+      noise: 0.4
+      lag_factor: 0.5
 
   - object_type: analog-input
     instance: 2
     name: "Supply Air Temp"
     present_value: 58.0
     units: degrees-fahrenheit
+    # Cooling-season 55°F, heating mode upper 80s (hot coil).
     behavior:
-      type: random_walk
-      center: 58.0
-      step_size: 3.0
-      min: 48.0
-      max: 100.0
+      type: conditional_on_oat
+      bands:
+        - oat_below: 45
+          value: 88.0
+        - oat_below: 60
+          value: 68.0
+        - oat_below: 200
+          value: 56.0
+      noise: 1.5
 
   - object_type: analog-input
     instance: 3
@@ -35,10 +42,12 @@ objects:
     present_value: 40.0
     units: percent
     behavior:
-      type: sine_wave
-      center: 40.0
-      amplitude: 30.0
-      period: 3600
+      type: world_value
+      signal: cooling_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   - object_type: analog-input
     instance: 4
@@ -46,10 +55,12 @@ objects:
     present_value: 0.0
     units: percent
     behavior:
-      type: sine_wave
-      center: 10.0
-      amplitude: 10.0
-      period: 3600
+      type: world_value
+      signal: heating_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   # ── Commands ──
   - object_type: analog-output
@@ -57,18 +68,41 @@ objects:
     name: "Fan Speed CMD"
     present_value: 75.0
     units: percent
+    # Fan slows overnight, runs harder when occupied.
+    behavior:
+      type: world_value
+      signal: occupancy
+      scale: 60.0
+      offset: 30.0
+      noise: 2.0
+      min: 30.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 2
     name: "CHW Valve CMD"
     present_value: 40.0
     units: percent
+    behavior:
+      type: world_value
+      signal: cooling_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 3
     name: "HW Valve CMD"
     present_value: 0.0
     units: percent
+    behavior:
+      type: world_value
+      signal: heating_demand
+      scale: 100.0
+      noise: 2.0
+      min: 0.0
+      max: 100.0
 
   # ── Status ──
   - object_type: binary-input
@@ -76,18 +110,16 @@ objects:
     name: "Fan Status"
     present_value: active
     behavior:
-      type: binary_toggle
-      on_duration: 1200
-      off_duration: 120
+      type: occupancy_binary
+      threshold: 0.05
 
   - object_type: binary-input
     instance: 2
     name: "Occupancy"
     present_value: active
     behavior:
-      type: binary_toggle
-      on_duration: 600
-      off_duration: 300
+      type: occupancy_binary
+      threshold: 0.1
 
   - object_type: binary-input
     instance: 3
@@ -105,12 +137,18 @@ objects:
     name: "Cooling Setpoint"
     present_value: 74.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 74.0
 
   - object_type: analog-value
     instance: 2
     name: "Heating Setpoint"
     present_value: 68.0
     units: degrees-fahrenheit
+    behavior:
+      type: static
+      value: 68.0
 
   # ── Mode ──
   - object_type: multi-state-value

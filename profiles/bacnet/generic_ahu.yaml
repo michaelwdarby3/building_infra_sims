@@ -1,7 +1,11 @@
 name: "Generic AHU"
-description: "Air Handling Unit with typical BACnet points"
+description: "Air Handling Unit — VAV, central, ~20,000 CFM design. Boston climate-driven."
 equipment_class: "AHU"
 vendor_name: "SimulatedHVAC"
+
+# Values driven by shared WorldState (Boston climate + DOE medium-office
+# occupancy schedule). See docs/realistic_values_research.md for source
+# calibration against ASHRAE Guideline 36 and DOE prototype.
 
 objects:
   # --- Temperature Sensors ---
@@ -11,10 +15,10 @@ objects:
     units: degrees-fahrenheit
     initial_value: 68.0
     behavior:
-      type: sine_wave
-      center: 68.0
-      amplitude: 5.0
-      period: 3600
+      type: mixed_air
+      damper_source: "Outside Air Damper CMD"
+      return_air_source: "Return Air Temp"
+      noise: 0.4
 
   - type: analog-input
     instance: 2
@@ -22,11 +26,10 @@ objects:
     units: degrees-fahrenheit
     initial_value: 55.0
     behavior:
-      type: random_walk
-      center: 55.0
-      step_size: 1.5
-      min: 48.0
-      max: 67.0
+      type: tracks
+      source: "Supply Air Temp Setpoint"
+      noise: 0.3
+      lag_factor: 0.4   # couple-minute thermal lag on the coil leaving-air sensor
 
   - type: analog-input
     instance: 3
@@ -34,33 +37,37 @@ objects:
     units: degrees-fahrenheit
     initial_value: 72.0
     behavior:
-      type: sine_wave
-      center: 72.0
-      amplitude: 6.0
-      period: 7200
+      type: tracks
+      source: "Zone Temp Setpoint"
+      bias: 1.5   # return plenum pickup, ~1.5°F above zone
+      noise: 0.25
+      lag_factor: 0.5
 
   - type: analog-input
     instance: 4
     name: "Outside Air Temp"
     units: degrees-fahrenheit
-    initial_value: 85.0
+    initial_value: 40.0
     behavior:
-      type: sine_wave
-      center: 75.0
-      amplitude: 15.0
-      period: 86400  # 24-hour cycle
+      type: world_value
+      signal: oat
+      noise: 0.5
 
   - type: analog-input
     instance: 5
     name: "Supply Air Pressure"
     units: inches-of-water
     initial_value: 1.5
+    # G36 duct SP reset between 0.5–2.5 inWC, tracking airflow demand.
+    # Proxy: scale cooling_demand (which rises with OAT+occupancy).
     behavior:
-      type: random_walk
-      center: 1.5
-      step_size: 0.2
+      type: world_value
+      signal: cooling_demand
+      scale: 1.3
+      offset: 0.7
+      noise: 0.08
       min: 0.3
-      max: 2.8
+      max: 2.5
 
   # --- Valve Commands ---
   - type: analog-output
@@ -68,18 +75,44 @@ objects:
     name: "Cooling Valve CMD"
     units: percent
     initial_value: 0.0
+    behavior:
+      type: world_value
+      signal: cooling_demand
+      scale: 100.0
+      noise: 1.0
+      min: 0.0
+      max: 100.0
 
   - type: analog-output
     instance: 2
     name: "Heating Valve CMD"
     units: percent
     initial_value: 0.0
+    behavior:
+      type: world_value
+      signal: heating_demand
+      scale: 100.0
+      noise: 1.0
+      min: 0.0
+      max: 100.0
 
   - type: analog-output
     instance: 3
     name: "Outside Air Damper CMD"
     units: percent
     initial_value: 20.0
+    # Economizer sequence per G36: 20% min OA when OAT outside 50–65°F band,
+    # up to 80% when OAT is in the free-cooling range.
+    behavior:
+      type: conditional_on_oat
+      bands:
+        - oat_below: 50
+          value: 20     # cold — min OA only
+        - oat_below: 65
+          value: 80     # economizer range
+        - oat_below: 200
+          value: 20     # warm — back to min OA
+      noise: 2.0
 
   # --- Fan Status ---
   - type: binary-input
@@ -87,20 +120,16 @@ objects:
     name: "Supply Fan Status"
     initial_value: active
     behavior:
-      type: schedule
-      schedule:
-        "06:00": "active"
-        "22:00": "inactive"
+      type: occupancy_binary
+      threshold: 0.05
 
   - type: binary-input
     instance: 2
     name: "Return Fan Status"
     initial_value: active
     behavior:
-      type: schedule
-      schedule:
-        "06:00": "active"
-        "22:00": "inactive"
+      type: occupancy_binary
+      threshold: 0.05
 
   # --- Fan Commands ---
   - type: binary-output
@@ -119,28 +148,48 @@ objects:
     name: "Supply Air Temp Setpoint"
     units: degrees-fahrenheit
     initial_value: 55.0
+    # G36 SAT reset: pin at 55°F during cooling, let it rise with reheat demand
+    # in shoulder/winter. Upper bound 65°F per G36 §5.16.
+    behavior:
+      type: conditional_on_oat
+      bands:
+        - oat_below: 30
+          value: 65     # coldest — let zones call for reheat
+        - oat_below: 55
+          value: 60     # mild
+        - oat_below: 200
+          value: 55     # hot — pure cooling
+      noise: 0.2
 
   - type: analog-value
     instance: 2
     name: "Zone Temp Setpoint"
     units: degrees-fahrenheit
     initial_value: 72.0
+    # Static for now — a per-zone scheduler is future work.
+    behavior:
+      type: static
+      value: 72.0
 
   - type: analog-value
     instance: 3
     name: "Min Outside Air Setpoint"
     units: percent
     initial_value: 20.0
+    behavior:
+      type: static
+      value: 20.0
 
   # --- Alarms ---
   - type: binary-value
     instance: 1
     name: "Freeze Alarm"
     initial_value: inactive
+    # Rare — only trips on MAT < 38°F, which should never happen in normal ops.
     behavior:
       type: binary_toggle
       on_duration: 60
-      off_duration: 28800
+      off_duration: 172800   # once every ~2 days
 
   - type: binary-value
     instance: 2

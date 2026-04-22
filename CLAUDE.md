@@ -47,6 +47,7 @@ pytest tests/test_profiles.py
 src/building_infra_sims/
   cli.py            — Typer CLI with subcommands: bacnet, modbus, skybox, scenario, dashboard, verify
   config.py         — Pydantic Settings (env prefix BSIM_), gateway/network/path config
+  world.py          — Shared WorldState singleton (Boston climate + occupancy schedule)
   bacnet/           — BACnet/IP simulator (bacpypes3): server.py, objects.py, profiles.py
   modbus/           — Modbus TCP simulator (pymodbus): server.py, profiles.py
   behaviors/base.py — ValueBehavior plugin system for realistic data generation
@@ -63,7 +64,9 @@ profiles/
 
 **Device profiles** — YAML files defining BACnet objects or Modbus registers with attached value behaviors. Each profile includes an `equipment_class` field (e.g. `AHU`, `VAV`, `Boiler`) that is propagated to the gateway during registration. Loaded by `bacnet/profiles.py` and `modbus/profiles.py`.
 
-**ValueBehaviors** (`behaviors/base.py`) — Plugin system for realistic sensor data. Types: `static`, `sine_wave`, `phased_sine_wave`, `random_walk`, `accumulator`, `schedule`, `binary_toggle`, `weighted_choice`. Derived behaviors (`dew_point`, `wet_bulb`, `deadband_switch`) reference other behaviors by name and resolve in a second pass.
+**ValueBehaviors** (`behaviors/base.py`) — Plugin system for realistic sensor data. Primitive types: `static`, `sine_wave`, `phased_sine_wave`, `random_walk`, `accumulator`, `schedule`, `binary_toggle`, `weighted_choice`. World-driven types: `world_value` (reads `oat`/`occupancy`/`outdoor_rh`/`solar_ghi`/`cooling_demand`/`heating_demand` from `WorldState`), `occupancy_binary` (on/off threshold on occupancy schedule), `conditional_on_oat` (OAT-reset bands for SAT reset, economizer position, boiler OAR curve). Derived behaviors reference other behaviors by name and resolve in a second pass: `dew_point`, `wet_bulb`, `deadband_switch`, `tracks` (value tracks a named source with bias + lag), `mixed_air` (damper-weighted blend of OAT and return-air temp). Nested deferred dependencies resolve transparently via recursive `_lookup`.
+
+**WorldState** (`world.py`) — Singleton shared by every device simulator. Deterministic pure functions of `time.time()` that return Boston climate (NOAA KBOS 1991-2020 normals, annual cosine + seasonal diurnal + sub-diurnal harmonics) and DOE medium-office occupancy (weekday 6-20h with ramp/decay, Saturday 30%, Sunday 0). Makes every device in a scenario naturally agree on whether it's a cold winter morning or a hot summer afternoon, without explicit coordination. Calibration details + source references in `docs/realistic_values_research.md`.
 
 **ScenarioRunner** (`scenarios/runner.py`) — Starts multiple BACnet + Modbus simulators from a scenario YAML, optionally registers them with a Skybox gateway. After registration, sets each connection's Brick Schema equipment class via the gateway API if the profile specifies one.
 
@@ -101,9 +104,9 @@ Environment variables (prefix `BSIM_`) or `.env` file:
 - Snake_case for behavior types (`sine_wave`, `random_walk`)
 - Kebab-case for BACnet object types (`analog-input`, `binary-output`)
 - UPPERCASE for Modbus datatypes (`UINT16`, `FLOAT32`)
-- Two-pass profile loading for deferred behaviors (dew_point, wet_bulb reference other behaviors by name)
+- Two-pass profile loading for deferred behaviors (dew_point, wet_bulb, deadband_switch, tracks, mixed_air, conditional_on_oat reference other behaviors by name; `resolve_deferred` recurses to handle nested chains)
 - pymodbus pinned to `>=3.6,<3.13` — version 3.13 rejects `ModbusSequentialDataBlock(0, values)` (address=0) and changes `ModbusServerContext` API, breaking all Modbus simulators
 
 ## Testing
 
-pytest with pytest-asyncio (`asyncio_mode = "auto"`). 212 tests in `tests/`: profile loading, dashboard, data sanity, recorder, write-tracking (Modbus `TrackedDataBlock` + BACnet priority-array fingerprinting), plus `integration/` for gateway tests.
+pytest with pytest-asyncio (`asyncio_mode = "auto"`). 252 tests in `tests/`: profile loading, dashboard, data sanity, recorder, write-tracking (Modbus `TrackedDataBlock` + BACnet priority-array fingerprinting), `test_world.py` (WorldState climate/occupancy + WorldValue/Tracks/ConditionalOnOAT/OccupancyBinary/MixedAir behavior unit tests), plus `integration/` for gateway tests.

@@ -1,8 +1,12 @@
 name: "Generic Lighting Controller"
-description: "4-zone lighting controller with occupancy and daylight sensing"
+description: "4-zone lighting controller — dims with daylight, schedule follows occupancy"
 equipment_class: "Lighting_Equipment"
 device_id: 8001
 port: 47808
+
+# Daylight dimming per ASHRAE 90.1: lights drop toward 0% as daylight rises
+# and occupancy is on. Overnight: 0%. Dawn/dusk: full. Noon: dimmed way down
+# in daylit zones.
 
 objects:
   # ── Zone dimming levels ──
@@ -11,25 +15,61 @@ objects:
     name: "Zone 1 Light Level"
     present_value: 80.0
     units: percent
-    description: "Dimming command 0-100%"
+    description: "Dimming command — perimeter zone with daylight harvesting"
+    # Occupied = ~80% minus up to 60% daylight offset.
+    behavior:
+      type: world_value
+      signal: solar_ghi
+      scale: -0.07    # up to -70% dim at 1000 W/m²
+      offset: 80.0
+      noise: 2.0
+      min: 10.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 2
     name: "Zone 2 Light Level"
     present_value: 90.0
     units: percent
+    # Interior zone, no daylight harvesting — follows occupancy only.
+    behavior:
+      type: world_value
+      signal: occupancy
+      scale: 90.0
+      offset: 5.0
+      noise: 2.0
+      min: 5.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 3
     name: "Zone 3 Light Level"
     present_value: 50.0
     units: percent
+    # Perimeter zone with moderate daylight harvesting.
+    behavior:
+      type: world_value
+      signal: solar_ghi
+      scale: -0.04
+      offset: 60.0
+      noise: 2.0
+      min: 5.0
+      max: 100.0
 
   - object_type: analog-output
     instance: 4
     name: "Zone 4 Light Level"
     present_value: 0.0
     units: percent
+    # Conference/break room — mostly off, on briefly during occupied hours.
+    behavior:
+      type: world_value
+      signal: occupancy
+      scale: 50.0
+      offset: 0.0
+      noise: 3.0
+      min: 0.0
+      max: 80.0
 
   # ── Occupancy sensors ──
   - object_type: binary-input
@@ -37,36 +77,34 @@ objects:
     name: "Zone 1 Occupied"
     present_value: active
     behavior:
-      type: binary_toggle
-      on_duration: 3600
-      off_duration: 1800
+      type: occupancy_binary
+      threshold: 0.1
 
   - object_type: binary-input
     instance: 2
     name: "Zone 2 Occupied"
     present_value: active
     behavior:
-      type: binary_toggle
-      on_duration: 2400
-      off_duration: 1200
+      type: occupancy_binary
+      threshold: 0.1
 
   - object_type: binary-input
     instance: 3
     name: "Zone 3 Occupied"
     present_value: inactive
+    # Slightly higher threshold = occupancy sensor trips later.
     behavior:
-      type: binary_toggle
-      on_duration: 1800
-      off_duration: 2400
+      type: occupancy_binary
+      threshold: 0.3
 
   - object_type: binary-input
     instance: 4
     name: "Zone 4 Occupied"
     present_value: inactive
+    # Intermittent-use zone — high threshold, mostly shows unoccupied.
     behavior:
-      type: binary_toggle
-      on_duration: 1200
-      off_duration: 3600
+      type: occupancy_binary
+      threshold: 0.6
 
   # ── Daylight ──
   - object_type: analog-input
@@ -74,12 +112,15 @@ objects:
     name: "Daylight Sensor"
     present_value: 450.0
     units: no-units
-    description: "Lux"
+    description: "Lux — roughly 100 lux per W/m² GHI"
     behavior:
-      type: sine_wave
-      center: 400.0
-      amplitude: 350.0
-      period: 86400
+      type: world_value
+      signal: solar_ghi
+      scale: 0.8
+      offset: 0.0
+      noise: 20.0
+      min: 0.0
+      max: 1200.0
 
   # ── Control ──
   - object_type: multi-state-value

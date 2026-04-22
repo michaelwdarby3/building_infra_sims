@@ -1,11 +1,15 @@
 name: "Generic BACnet Power Meter"
-description: "3-phase power meter exposed over BACnet/IP"
+description: "3-phase utility meter — small-office load profile (~7 kW peak, ~2 kW overnight base)"
 equipment_class: "Electrical_Meter"
 device_id: 3001
 port: 47808
 
+# Boston-region small office: annual intensity ~13 kWh/ft²/yr × ~5000 ft²
+# ≈ 65 MWh/yr ≈ 7.4 kW average. Daytime peak ~9 kW, overnight base ~2 kW.
+# Per DOE commercial reference building for an office in climate zone 5A.
+
 objects:
-  # ── Voltage (line-to-neutral) ──
+  # ── Voltage (line-to-neutral, tight ±5% of 120V nominal) ──
   - object_type: analog-input
     instance: 1
     name: "Voltage Phase A"
@@ -15,9 +19,9 @@ objects:
     behavior:
       type: random_walk
       center: 120.0
-      step_size: 1.0
-      min: 115.0
-      max: 125.0
+      step_size: 0.5
+      min: 117.0
+      max: 123.0
 
   - object_type: analog-input
     instance: 2
@@ -27,9 +31,9 @@ objects:
     behavior:
       type: random_walk
       center: 120.0
-      step_size: 1.0
-      min: 115.0
-      max: 125.0
+      step_size: 0.5
+      min: 117.0
+      max: 123.0
 
   - object_type: analog-input
     instance: 3
@@ -39,81 +43,93 @@ objects:
     behavior:
       type: random_walk
       center: 120.0
-      step_size: 1.0
-      min: 115.0
-      max: 125.0
+      step_size: 0.5
+      min: 117.0
+      max: 123.0
 
-  # ── Current (120° phase offsets for realistic 3-phase) ──
+  # ── Current per phase ──
+  # Phased sine (period = 1 day) gives realistic daily envelope and keeps
+  # the 120° electrical offset so A/B/C differ by several amps at any
+  # given moment. Center 18A ≈ 6.5 kW per phase at 120V·0.92PF.
   - object_type: analog-input
     instance: 4
     name: "Current Phase A"
-    present_value: 15.0
+    present_value: 18.0
     units: amperes
     behavior:
       type: phased_sine_wave
-      center: 15.0
-      amplitude: 5.0
-      period: 1800
+      center: 18.0
+      amplitude: 8.0
+      period: 86400
       phase_offset: 0.0
 
   - object_type: analog-input
     instance: 5
     name: "Current Phase B"
-    present_value: 14.8
+    present_value: 17.5
     units: amperes
     behavior:
       type: phased_sine_wave
-      center: 15.0
-      amplitude: 5.0
-      period: 1800
+      center: 18.0
+      amplitude: 8.0
+      period: 86400
       phase_offset: 2.094
 
   - object_type: analog-input
     instance: 6
     name: "Current Phase C"
-    present_value: 15.1
+    present_value: 18.2
     units: amperes
     behavior:
       type: phased_sine_wave
-      center: 15.0
-      amplitude: 5.0
-      period: 1800
+      center: 18.0
+      amplitude: 8.0
+      period: 86400
       phase_offset: 4.189
 
-  # ── Power ──
+  # ── Total real/reactive power ──
+  # Driven by occupancy with a base load. kW = 2 (base) + 7·occ.
   - object_type: analog-input
     instance: 10
     name: "Total Real Power kW"
-    present_value: 5.4
+    present_value: 5.0
     units: kilowatts
     behavior:
-      type: sine_wave
-      center: 5.0
-      amplitude: 3.0
-      period: 3600
+      type: world_value
+      signal: occupancy
+      scale: 7.0
+      offset: 2.0
+      noise: 0.25
+      min: 1.5
+      max: 10.0
 
   - object_type: analog-input
     instance: 11
     name: "Total Reactive Power kVAR"
     present_value: 1.2
     units: kilovolt-amperes-reactive
+    # Roughly 20% of real power, so PF ≈ 0.92.
     behavior:
-      type: sine_wave
-      center: 1.0
-      amplitude: 1.5
-      period: 3600
+      type: world_value
+      signal: occupancy
+      scale: 1.5
+      offset: 0.5
+      noise: 0.15
+      min: 0.3
+      max: 2.5
 
   - object_type: analog-input
     instance: 12
     name: "Power Factor"
-    present_value: 0.95
+    present_value: 0.92
     units: no-units
+    # Typical commercial lagging PF. Narrow walk keeps it realistic.
     behavior:
       type: random_walk
-      center: 0.95
-      step_size: 0.03
-      min: 0.82
-      max: 1.0
+      center: 0.92
+      step_size: 0.01
+      min: 0.85
+      max: 0.98
 
   - object_type: analog-input
     instance: 13
@@ -127,7 +143,9 @@ objects:
       min: 59.90
       max: 60.10
 
-  # ── Energy (accumulating) ──
+  # ── Energy (monotonic accumulator) ──
+  # 7.2 kWh/hr average → 0.002 kWh/s. Starts at a believable lifetime
+  # reading for a few years of service.
   - object_type: analog-input
     instance: 20
     name: "Total Energy kWh"
@@ -136,7 +154,7 @@ objects:
     behavior:
       type: accumulator
       initial: 123456.0
-      rate_per_second: 0.0015
+      rate_per_second: 0.002
 
   # ── Device status ──
   - object_type: binary-input
