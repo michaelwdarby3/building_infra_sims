@@ -91,7 +91,7 @@ Environment variables (prefix `BSIM_`) or `.env` file:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `BSIM_SKYBOX_HOST` | `10.0.0.35` | Gateway IP |
+| `BSIM_SKYBOX_HOST` | | Gateway IP |
 | `BSIM_SKYBOX_PORT` | `8000` | Gateway port |
 | `BSIM_SKYBOX_USERNAME` | | Gateway auth |
 | `BSIM_SKYBOX_PASSWORD` | | Gateway auth |
