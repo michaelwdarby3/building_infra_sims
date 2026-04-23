@@ -250,6 +250,11 @@ Each BACnet device in a scenario needs a unique `device_id`. Each Modbus device 
 | `schedule` | `schedule` (dict of "HH:MM" -> value), `default` | Occupancy, setpoint schedules |
 | `binary_toggle` | `on_duration`, `off_duration` | Equipment status, alarms |
 | `static` | `value` | Fixed setpoints, configuration values |
+| `world_value` | `signal` (`oat`/`outdoor_rh`/`solar_ghi`/`occupancy`/`cooling_demand`/`heating_demand`) | Climate- or occupancy-driven values from the shared Boston WorldState |
+| `occupancy_binary` | `on_threshold` | Binary on/off keyed to the DOE medium-office occupancy schedule |
+| `conditional_on_oat` | `oat_bands` (list of `{below, value}`) | OAT-reset curves (SAT reset, economizer position, boiler OAR) |
+| `tracks` | `source`, `bias`, `lag` | Value tracks a named point with optional fixed bias and time lag |
+| `mixed_air` | `oa_source`, `ra_source`, `damper_source` | Damper-weighted blend of outdoor-air and return-air temperatures |
 
 ### Available BACnet Units
 
