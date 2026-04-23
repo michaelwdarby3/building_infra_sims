@@ -33,7 +33,7 @@ The `.env` file uses a `BSIM_` prefix for all variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `BSIM_SKYBOX_HOST` | `10.0.0.35` | Gateway IP address |
+| `BSIM_SKYBOX_HOST` | *(set per-machine)* | Gateway IP address (configure in your `.env`) |
 | `BSIM_SKYBOX_PORT` | `8000` | Gateway HTTP API port |
 | `BSIM_SKYBOX_USERNAME` | *(empty)* | Gateway login username |
 | `BSIM_SKYBOX_PASSWORD` | *(empty)* | Gateway login password |
