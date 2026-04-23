@@ -200,6 +200,41 @@ objects:
       on_duration: 300
       off_duration: 86400
 
+  # --- Schedule ---
+  # Weekly occupancy schedule that a BMS would consult to reset the zone
+  # setpoint. Mon–Fri: 72°F during occupancy, 85°F unoccupied.
+  # Sat–Sun: unoccupied all day. Exposes weeklySchedule / effectivePeriod /
+  # scheduleDefault so a supervisory-control-aware client can show operators
+  # which rules already exist before issuing a manual override.
+  - type: schedule
+    instance: 1
+    name: "Occupancy Schedule"
+    initial_value: 72.0
+    schedule_default: 85.0
+    effective_period:
+      start: "2026-01-01"
+      end: "2026-12-31"
+    weekly_schedule:
+      # Monday
+      - - {time: "07:00", value: 72.0}
+        - {time: "18:00", value: 85.0}
+      # Tuesday
+      - - {time: "07:00", value: 72.0}
+        - {time: "18:00", value: 85.0}
+      # Wednesday
+      - - {time: "07:00", value: 72.0}
+        - {time: "18:00", value: 85.0}
+      # Thursday
+      - - {time: "07:00", value: 72.0}
+        - {time: "18:00", value: 85.0}
+      # Friday
+      - - {time: "07:00", value: 72.0}
+        - {time: "18:00", value: 85.0}
+      # Saturday — unoccupied all day
+      - - {time: "00:00", value: 85.0}
+      # Sunday — unoccupied all day
+      - - {time: "00:00", value: 85.0}
+
   # --- Operating Mode ---
   - type: multi-state-value
     instance: 1

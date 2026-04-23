@@ -62,6 +62,11 @@ def create_simulator_from_profile(
             description=obj_cfg.get("description"),
             behavior=behavior,
             states=obj_cfg.get("states", []),
+            weekly_schedule=obj_cfg.get("weekly_schedule", []),
+            exception_schedule=obj_cfg.get("exception_schedule", []),
+            effective_period=obj_cfg.get("effective_period"),
+            schedule_default=obj_cfg.get("schedule_default"),
+            referenced_points=obj_cfg.get("referenced_points", []),
         )
 
     logger.info(f"Loaded profile '{profile['name']}' with {len(profile.get('objects', []))} objects")

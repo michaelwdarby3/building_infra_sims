@@ -17,6 +17,7 @@ from bacpypes3.local.multistate import (
     MultiStateOutputObject,
     MultiStateValueObject,
 )
+from bacpypes3.object import ScheduleObject
 
 # Map BACnet type names to BACpypes3 classes
 BACNET_OBJECT_MAP = {
@@ -29,6 +30,7 @@ BACNET_OBJECT_MAP = {
     "multi-state-input": MultiStateInputObject,
     "multi-state-output": MultiStateOutputObject,
     "multi-state-value": MultiStateValueObject,
+    "schedule": ScheduleObject,
 }
 
 # Common engineering unit mappings
@@ -108,6 +110,15 @@ def create_bacnet_object(
         if states:
             obj_def["number-of-states"] = len(states)
             obj_def["state-text"] = states
+    elif obj_type == "schedule":
+        # Schedule doesn't go through Application.from_json — it's instantiated
+        # programmatically in create_schedule_object using bacpypes3 structured
+        # types. We just stash the raw YAML-side fields for later consumption.
+        obj_def["weekly_schedule"] = kwargs.get("weekly_schedule", [])
+        obj_def["exception_schedule"] = kwargs.get("exception_schedule", [])
+        obj_def["effective_period"] = kwargs.get("effective_period")
+        obj_def["schedule_default"] = kwargs.get("schedule_default", present_value)
+        obj_def["referenced_points"] = kwargs.get("referenced_points", [])
 
     return obj_def
 
@@ -115,6 +126,11 @@ def create_bacnet_object(
 # Types that use the Commandable mixin and must be created programmatically
 # (BACpypes3 json_to_sequence can't handle Commandable default init)
 COMMANDABLE_TYPES = {"analog-output", "binary-output", "multi-state-output"}
+
+# Schedule objects also need programmatic construction: their structured
+# properties (weeklySchedule, effectivePeriod, ...) don't survive
+# Application.from_json's decoding of nested Sequence types.
+SCHEDULE_TYPES = {"schedule"}
 
 
 def create_commandable_object(obj_def: dict[str, Any]) -> Any:
@@ -158,3 +174,73 @@ def create_commandable_object(obj_def: dict[str, Any]) -> Any:
         kwargs["description"] = obj_def["description"]
 
     return cls(**kwargs)
+
+
+def create_schedule_object(obj_def: dict[str, Any]) -> Any:
+    """Build a bacpypes3 ScheduleObject from a YAML-derived dict.
+
+    The profile YAML carries plain Python values (floats for presentValue,
+    list-of-dicts for weekly_schedule, iso-style strings for dates). We
+    translate those into the structured bacpypes3 types (DailySchedule,
+    TimeValue, DateRange, Real, ...) required by ScheduleObject.
+    """
+    from bacpypes3.basetypes import DailySchedule, DateRange, SpecialEvent, TimeValue
+    from bacpypes3.object import ScheduleObject
+    from bacpypes3.primitivedata import Date, Real, Time
+
+    def _time_from_str(s: str) -> Time:
+        # "HH:MM" or "HH:MM:SS" — bacpypes3 Time takes (h, m, s, hundredths)
+        parts = [int(p) for p in s.split(":")]
+        while len(parts) < 3:
+            parts.append(0)
+        return Time((parts[0], parts[1], parts[2], 0))
+
+    def _date_from_iso(s: str) -> Date:
+        # Python 2.6 + bacpypes3 Date: (year-1900, month, day, day-of-week).
+        # Day-of-week = 1 (unspecified) is acceptable; bacpypes3 normalizes.
+        from datetime import date
+
+        d = date.fromisoformat(s)
+        return Date((d.year - 1900, d.month, d.day, 1))
+
+    # Weekly schedule: list of 7 DailySchedule entries. Each entry is a list of
+    # {time, value} dicts. Missing days get empty daySchedule.
+    raw_weekly = obj_def.get("weekly_schedule") or []
+    weekly: list[DailySchedule] = []
+    for day_cfg in raw_weekly:
+        day_schedule = []
+        for tv in day_cfg or []:
+            day_schedule.append(
+                TimeValue(
+                    time=_time_from_str(tv["time"]),
+                    value=Real(float(tv["value"])),
+                )
+            )
+        weekly.append(DailySchedule(daySchedule=day_schedule))
+    # Pad to 7 days
+    while len(weekly) < 7:
+        weekly.append(DailySchedule(daySchedule=[]))
+
+    kwargs: dict[str, Any] = {
+        "objectIdentifier": obj_def["object-identifier"],
+        "objectName": obj_def["object-name"],
+        "presentValue": Real(float(obj_def.get("present-value") or 0.0)),
+        "weeklySchedule": weekly,
+        "exceptionSchedule": [],
+        "scheduleDefault": Real(float(obj_def.get("schedule_default") or 0.0)),
+        "listOfObjectPropertyReferences": [],
+        "outOfService": False,
+        "statusFlags": [],
+    }
+
+    ep = obj_def.get("effective_period")
+    if ep and isinstance(ep, dict) and "start" in ep and "end" in ep:
+        kwargs["effectivePeriod"] = DateRange(
+            startDate=_date_from_iso(ep["start"]),
+            endDate=_date_from_iso(ep["end"]),
+        )
+
+    if "description" in obj_def:
+        kwargs["description"] = obj_def["description"]
+
+    return ScheduleObject(**kwargs)

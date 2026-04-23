@@ -60,6 +60,10 @@ profiles/
   scenarios/        — 4 multi-device scenarios (small_office, medium_office, campus, data_center)
 ```
 
+### BACnet object types
+
+`bacnet/objects.py` maps profile `type:` strings to bacpypes3 classes. Non-commandable objects (inputs / values) go through `Application.from_json`. Commandable objects (`analog-output`, `binary-output`, `multi-state-output`) and `schedule` objects are instantiated programmatically *after* app creation — `json_to_sequence` can't handle the Commandable mixin's `__init__`, and ScheduleObject's `weeklySchedule` / `effectivePeriod` structured types don't round-trip through JSON decode. `generic_ahu.yaml` includes an `Occupancy_Schedule` Schedule object so a BMS-aware client (e.g. the scanner's `/api/connections/{id}/schedules` endpoint) can read existing time-of-day rules.
+
 ## Key Concepts
 
 **Device profiles** — YAML files defining BACnet objects or Modbus registers with attached value behaviors. Each profile includes an `equipment_class` field (e.g. `AHU`, `VAV`, `Boiler`) that is propagated to the gateway during registration. Loaded by `bacnet/profiles.py` and `modbus/profiles.py`.

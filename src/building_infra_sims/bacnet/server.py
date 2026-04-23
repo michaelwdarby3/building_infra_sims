@@ -13,8 +13,10 @@ from bacpypes3.primitivedata import ObjectIdentifier
 from building_infra_sims.bacnet.objects import (
     BACNET_OBJECT_MAP,
     COMMANDABLE_TYPES,
+    SCHEDULE_TYPES,
     create_bacnet_object,
     create_commandable_object,
+    create_schedule_object,
 )
 from building_infra_sims.behaviors import ValueBehavior
 
@@ -275,10 +277,15 @@ class BACnetDeviceSimulator:
             "bbmd-foreign-device-table": [],
         }
 
-        # Non-commandable objects go in the JSON config
-        # Deep copy because Application.from_json() mutates the input dicts
+        # Non-commandable, non-schedule objects go in the JSON config.
+        # Commandable objects are added programmatically after app creation
+        # (Commandable mixin + json_to_sequence don't play well). Schedule
+        # objects are also programmatic because their weeklySchedule /
+        # effectivePeriod properties don't survive json decoding.
+        # Deep copy because Application.from_json() mutates the input dicts.
+        skip_types = COMMANDABLE_TYPES | SCHEDULE_TYPES
         non_cmd_objects = [
-            copy.deepcopy(o) for o in self._object_defs if o["object-type"] not in COMMANDABLE_TYPES
+            copy.deepcopy(o) for o in self._object_defs if o["object-type"] not in skip_types
         ]
 
         return [device_obj, network_port_obj] + non_cmd_objects
@@ -293,6 +300,19 @@ class BACnetDeviceSimulator:
             self._app.add_object(obj)
             logger.debug(f"Added commandable object: {obj_def['object-identifier']}")
 
+    def _add_schedule_objects(self) -> None:
+        """Add Schedule objects programmatically. Their structured properties
+        (weeklySchedule / effectivePeriod / ...) can't round-trip through
+        Application.from_json, so we build them with bacpypes3 types directly.
+        """
+        for obj_def in self._object_defs:
+            if obj_def["object-type"] not in SCHEDULE_TYPES:
+                continue
+
+            obj = create_schedule_object(obj_def)
+            self._app.add_object(obj)
+            logger.debug(f"Added schedule object: {obj_def['object-identifier']}")
+
     async def start(self) -> None:
         """Start the BACnet application and begin responding to network requests."""
         logger.info(
@@ -304,8 +324,9 @@ class BACnetDeviceSimulator:
         json_config = self._build_application_json()
         self._app = Application.from_json(json_config)
 
-        # Add commandable objects programmatically
+        # Add commandable and schedule objects programmatically
         self._add_commandable_objects()
+        self._add_schedule_objects()
 
         self._start_time = time.monotonic()
 
