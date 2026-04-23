@@ -34,3 +34,6 @@ htmlcov/
 
 # mypy
 .mypy_cache/
+
+# Machine-local Claude Code doc (maintainer-specific paths, routine IDs)
+CLAUDE.local.md

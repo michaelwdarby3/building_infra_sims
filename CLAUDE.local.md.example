@@ -1,0 +1,18 @@
+# Local Claude Code Notes (template)
+
+Copy this file to `CLAUDE.local.md` (gitignored) and fill in machine-specific notes.
+`CLAUDE.local.md` is automatically loaded by Claude Code sessions in this repo alongside
+`CLAUDE.md`, so put host-specific paths, local service endpoints, routine IDs, or
+credentials pointers here without leaking them into the shared repo doc.
+
+## Local dev paths (example)
+
+- Project checkout: `/absolute/path/here`
+- Sibling repos (if relevant): infrastructure_scanner, infrastructure_portal at `/path/`
+- Python venv: `.venv` at repo root (managed by `make install`)
+
+## Claude Code routines (example)
+
+| Routine | ID | Schedule | Purpose |
+|---|---|---|---|
+| Doc drift check | `trig_...` | Daily | Flag drift between code and docs |
