@@ -1,0 +1,130 @@
+name: "Generic Power Disconnect"
+description: "Building emergency power shutoff — Knox-accessible disconnect with monitoring"
+equipment_class: "Power_Disconnect"
+unit_id: 1
+port: 10570
+
+# Building-level emergency disconnect switch, typically located near the main
+# entrance and accessible to fire department via Knox box. Used as the
+# "Building Power Shutoff Switch" in the cloudBIMStorm RE1 emergency-response
+# scenario. Switch is normally closed (1); fire-fighter operation opens it (0).
+
+registers:
+  holding:
+    - address: 0
+      name: "Operator Command"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+      # 0=Open (de-energize), 1=Closed (normal). Operator-writable; maps to a
+      # solenoid-trip path in the real device. The simulator accepts overrides
+      # via Modbus FC06 to demonstrate fire-fighter remote shutoff.
+
+    - address: 2
+      name: "Reset Trip Command"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+
+  input:
+    - address: 0
+      name: "Switch Position"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+      # 0=Open, 1=Closed, 2=Tripped (overcurrent or manual fire-fighter)
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 1
+            weight: 99
+          - value: 0
+            weight: 0.5
+          - value: 2
+            weight: 0.5
+        hold_min: 3600
+        hold_max: 604800
+
+    - address: 1
+      name: "Knox Box Access Active"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+      # Asserted when Knox lock has been opened (key turned). Used to
+      # distinguish authorized fire-department access from tamper.
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 99.5
+          - value: 1
+            weight: 0.5
+        hold_min: 1800
+        hold_max: 86400
+
+    - address: 2
+      name: "Tamper Switch"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+      # Asserted if enclosure cover is removed without Knox access.
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 99.95
+          - value: 1
+            weight: 0.05
+        hold_min: 600
+        hold_max: 86400
+
+    - address: 4
+      name: "Line Side Voltage"
+      datatype: FLOAT32
+      unit: V
+      initial_value: 480.0
+      behavior:
+        type: random_walk
+        center: 480.0
+        step_size: 1.5
+        min: 472.0
+        max: 488.0
+
+    - address: 6
+      name: "Load Side Voltage"
+      datatype: FLOAT32
+      unit: V
+      initial_value: 480.0
+      # Load side de-energizes when switch opens; mirrors line in normal op.
+      behavior:
+        type: tracks
+        source: "Line Side Voltage"
+        bias: -0.5
+        noise: 0.3
+        lag_factor: 0.9
+
+    - address: 8
+      name: "Line Current"
+      datatype: FLOAT32
+      unit: A
+      initial_value: 220.0
+      behavior:
+        type: world_value
+        signal: occupancy
+        scale: 180.0
+        offset: 80.0
+        noise: 6.0
+        min: 60.0
+        max: 320.0
+
+    - address: 10
+      name: "Last Operation Timestamp"
+      datatype: UINT32
+      unit: epoch_seconds
+      initial_value: 1735689600
+
+    - address: 14
+      name: "Operation Count"
+      datatype: UINT32
+      unit: count
+      initial_value: 12

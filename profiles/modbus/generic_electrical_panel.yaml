@@ -1,0 +1,259 @@
+name: "Generic Electrical Panel"
+description: "24-circuit branch panel — per-breaker state, bus voltage, panel temp"
+equipment_class: "Electrical_Panel"
+unit_id: 1
+port: 10560
+
+# 24-pole branch panel sitting between a building feeder and downstream loads.
+# Each breaker reports state (0=open, 1=closed, 2=tripped). Aggregate kW and
+# panel temperature track building load. Used as the "First-Floor Electrical
+# Panel" in the cloudBIMStorm RE1 emergency-response scenario.
+
+registers:
+  holding:
+    - address: 0
+      name: "Panel Disable Command"
+      datatype: UINT16
+      unit: status
+      initial_value: 0
+
+    - address: 2
+      name: "Reset Trip Command"
+      datatype: UINT16
+      unit: status
+      initial_value: 0
+
+  input:
+    # ── Bus voltage (3-phase 208Y/120) ──
+    - address: 0
+      name: "Bus Voltage AB"
+      datatype: FLOAT32
+      unit: V
+      initial_value: 208.2
+      behavior:
+        type: random_walk
+        center: 208.0
+        step_size: 0.6
+        min: 204.0
+        max: 212.0
+
+    - address: 2
+      name: "Bus Voltage BC"
+      datatype: FLOAT32
+      unit: V
+      initial_value: 207.9
+      behavior:
+        type: random_walk
+        center: 208.0
+        step_size: 0.6
+        min: 204.0
+        max: 212.0
+
+    - address: 4
+      name: "Bus Voltage CA"
+      datatype: FLOAT32
+      unit: V
+      initial_value: 208.1
+      behavior:
+        type: random_walk
+        center: 208.0
+        step_size: 0.6
+        min: 204.0
+        max: 212.0
+
+    # ── Aggregate load ──
+    - address: 6
+      name: "Total Current"
+      datatype: FLOAT32
+      unit: A
+      initial_value: 95.0
+      behavior:
+        type: world_value
+        signal: occupancy
+        scale: 70.0
+        offset: 35.0
+        noise: 4.0
+        min: 30.0
+        max: 180.0
+
+    - address: 8
+      name: "Total kW"
+      datatype: FLOAT32
+      unit: kW
+      initial_value: 32.0
+      behavior:
+        type: world_value
+        signal: occupancy
+        scale: 22.0
+        offset: 12.0
+        noise: 1.5
+        min: 10.0
+        max: 60.0
+
+    # ── Panel temperature (rises with load) ──
+    - address: 10
+      name: "Panel Temperature"
+      datatype: FLOAT32
+      unit: degF
+      initial_value: 92.0
+      behavior:
+        type: world_value
+        signal: occupancy
+        scale: 18.0
+        offset: 78.0
+        noise: 1.0
+        min: 70.0
+        max: 130.0
+
+    # ── Per-breaker state, 24 poles. 0=open, 1=closed, 2=tripped ──
+    - address: 100
+      name: "Breaker 01 - 4F Mech Room Panel Feed"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 101
+      name: "Breaker 02 - 4F Mech Room Panel Feed"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 102
+      name: "Breaker 03 - Elevator Machine Room"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 103
+      name: "Breaker 04 - Fire Pump"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 104
+      name: "Breaker 05 - FACP"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 105
+      name: "Breaker 06 - Rooftop ASHP-1"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 106
+      name: "Breaker 07 - Rooftop ASHP-2"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 107
+      name: "Breaker 08 - 1F Lighting"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 108
+      name: "Breaker 09 - 1F Receptacles"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 109
+      name: "Breaker 10 - Lobby HVAC"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 110
+      name: "Breaker 11 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 111
+      name: "Breaker 12 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 112
+      name: "Breaker 13 - Roof Stair Pressurization"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 113
+      name: "Breaker 14 - Trash Room Exhaust"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 114
+      name: "Breaker 15 - Domestic Water Booster Pump"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 115
+      name: "Breaker 16 - Telecom Closet"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 116
+      name: "Breaker 17 - Garage Lighting"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 117
+      name: "Breaker 18 - Site Lighting"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+    - address: 118
+      name: "Breaker 19 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 119
+      name: "Breaker 20 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 120
+      name: "Breaker 21 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 121
+      name: "Breaker 22 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 122
+      name: "Breaker 23 - Spare"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+    - address: 123
+      name: "Breaker 24 - Main"
+      datatype: UINT16
+      unit: state
+      initial_value: 1
+
+    # ── Ground fault and supervisory ──
+    - address: 200
+      name: "Ground Fault Active"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 99
+          - value: 1
+            weight: 1
+        hold_min: 86400
+        hold_max: 604800
+
+    - address: 201
+      name: "Panel Door Open"
+      datatype: UINT16
+      unit: state
+      initial_value: 0
+      behavior:
+        type: weighted_choice
+        choices:
+          - value: 0
+            weight: 99.5
+          - value: 1
+            weight: 0.5
+        hold_min: 3600
+        hold_max: 86400

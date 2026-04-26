@@ -1,0 +1,205 @@
+name: "Generic Elevator Cab"
+description: "Single-cab elevator — position, door state, service phase, fault status"
+equipment_class: "Elevator"
+device_id: 8001
+port: 47808
+
+# Models a single passenger elevator cab in an 18-story residential tower.
+# Cab travels 1-18; Phase I/II are firefighter recall states (ASME A17.1).
+# Default behavior: cab idles around lobby/common floors with occasional
+# rides; Phase I is rare unless triggered by a fire alarm event.
+
+objects:
+  # ── Position and motion ──
+  - object_type: analog-input
+    instance: 1
+    name: "Cab Position"
+    present_value: 4.0
+    units: no-units
+    description: "Current floor (1-18, fractional during travel)"
+    # Cab stops randomly across floors; weighted toward lobby and
+    # frequently-visited residential floors (4=RE1).
+    behavior:
+      type: random_walk
+      center: 4.0
+      step_size: 0.4
+      min: 1.0
+      max: 18.0
+
+  - object_type: analog-input
+    instance: 2
+    name: "Cab Speed"
+    present_value: 0.0
+    units: no-units
+    description: "Cab travel speed in feet-per-minute (0 when stopped)"
+    behavior:
+      type: random_walk
+      center: 0.0
+      step_size: 50.0
+      min: 0.0
+      max: 350.0
+
+  - object_type: multi-state-input
+    instance: 1
+    name: "Cab Direction"
+    present_value: 1
+    description: "1=Stopped 2=Up 3=Down"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 1
+          weight: 70
+        - value: 2
+          weight: 15
+        - value: 3
+          weight: 15
+      hold_min: 30
+      hold_max: 240
+
+  # ── Door state ──
+  - object_type: multi-state-input
+    instance: 2
+    name: "Cab Door State"
+    present_value: 1
+    description: "1=Closed 2=Opening 3=Open 4=Closing 5=Fault"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 1
+          weight: 70
+        - value: 2
+          weight: 5
+        - value: 3
+          weight: 18
+        - value: 4
+          weight: 6
+        - value: 5
+          weight: 1
+      hold_min: 8
+      hold_max: 90
+
+  - object_type: binary-input
+    instance: 1
+    name: "Hoistway Door Closed"
+    present_value: active
+    behavior:
+      type: binary_toggle
+      on_duration: 14400
+      off_duration: 90
+
+  # ── Firefighter service (ASME A17.1) ──
+  - object_type: multi-state-input
+    instance: 3
+    name: "Service Phase"
+    present_value: 1
+    description: "1=Normal 2=Phase I Recall 3=Phase II In Use 4=Out of Service"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 1
+          weight: 95
+        - value: 2
+          weight: 2
+        - value: 3
+          weight: 1
+        - value: 4
+          weight: 2
+      hold_min: 1800
+      hold_max: 28800
+
+  - object_type: binary-input
+    instance: 2
+    name: "Phase I Recall Active"
+    present_value: inactive
+    description: "Smoke detector triggered firefighter recall"
+    behavior:
+      type: binary_toggle
+      on_duration: 600
+      off_duration: 86400
+
+  - object_type: binary-input
+    instance: 3
+    name: "Phase II Active"
+    present_value: inactive
+    description: "Firefighter has key in cab control panel"
+    behavior:
+      type: binary_toggle
+      on_duration: 1200
+      off_duration: 172800
+
+  - object_type: analog-input
+    instance: 3
+    name: "Recall Floor"
+    present_value: 1.0
+    units: no-units
+    description: "Designated recall floor (typically lobby = 1)"
+    behavior:
+      type: static
+      value: 1.0
+
+  # ── Fault and supervisory ──
+  - object_type: binary-input
+    instance: 10
+    name: "Fault Active"
+    present_value: inactive
+    behavior:
+      type: binary_toggle
+      on_duration: 300
+      off_duration: 172800
+
+  - object_type: multi-state-input
+    instance: 4
+    name: "Fault Code"
+    present_value: 1
+    description: "1=None 2=Door Lock 3=Overload 4=Drive 5=Brake 6=Comm Loss"
+    behavior:
+      type: weighted_choice
+      choices:
+        - value: 1
+          weight: 96
+        - value: 2
+          weight: 1
+        - value: 3
+          weight: 1
+        - value: 4
+          weight: 1
+        - value: 5
+          weight: 0.5
+        - value: 6
+          weight: 0.5
+      hold_min: 600
+      hold_max: 86400
+
+  # ── Performance and runtime ──
+  - object_type: analog-value
+    instance: 1
+    name: "Daily Trip Count"
+    present_value: 0.0
+    units: no-units
+    behavior:
+      type: accumulator
+      initial: 0.0
+      rate_per_second: 0.0035
+
+  - object_type: analog-value
+    instance: 2
+    name: "Runtime Hours"
+    present_value: 25000.0
+    units: no-units
+    description: "Lifetime runtime in hours"
+    behavior:
+      type: accumulator
+      initial: 25000.0
+      rate_per_second: 0.0001
+
+  - object_type: analog-input
+    instance: 5
+    name: "Motor Current"
+    present_value: 12.0
+    units: amperes
+    behavior:
+      type: random_walk
+      center: 12.0
+      step_size: 1.5
+      min: 0.5
+      max: 35.0

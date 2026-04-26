@@ -1,0 +1,56 @@
+name: "cloudBIMStorm RE1"
+description: "Verdicity contribution to cloudBIMStorm 2026: live BACnet/Modbus telemetry binding for the RE1 unit emergency-response scenario. ~10 simulated devices mapped to canonical Onuma IRIs at TTL emit time."
+
+# Companion config: asset_leadership_demo/cloudbimstorm/config/iri_map.yaml
+# binds each device_id / port to a :Component_177_<id> Onuma IRI and the
+# EnumerationKind-Aspect property values (InstanceName, ComponentName, OnumaId,
+# Guid). The simulator does not need to know about that mapping; the scanner's
+# cloudbimstorm export profile loads it at TTL emit time.
+
+bacnet_devices:
+  # ── Fire control panel (PNL-03 / 284621-FirePanel) ──
+  # Maps to existing canonical :Component_177_3210539
+  - profile: profiles/bacnet/generic_fire_alarm_panel.yaml
+    device_id: 8200
+
+  # ── Elevator cab (1F ↔ 4F RE1) ──
+  - profile: profiles/bacnet/generic_elevator.yaml
+    device_id: 8210
+
+  # ── Rooftop ASHP units (2x — heating tower + DHW) ──
+  - profile: profiles/bacnet/generic_heat_pump.yaml
+    device_id: 8220
+  - profile: profiles/bacnet/generic_heat_pump.yaml
+    device_id: 8221
+
+  # ── Environmental sensor racks distributed across 11 RE1 spaces ──
+  # Two BACnet sensor groups: living-area (RE-7 living, RE-3 dining, RE-4 entry)
+  # and wet-area (RE-2 bath, RE-5 kitchenette, RE-6 laundry, RE-12 toilet).
+  # The simulator profile is Modbus-only for sensor_rack today; we use the
+  # FCU profile as a stand-in for living-area sensors (CO2/temp/occupancy)
+  # because it carries those points and binds easily to room-level IRIs.
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8230
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8231
+
+modbus_devices:
+  # ── Fire pump (1F mechanical room, NFPA-20-style fire pump) ──
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10602
+    unit_id: 1
+
+  # ── Building emergency power shutoff (Knox-accessible) ──
+  - profile: profiles/modbus/generic_power_disconnect.yaml
+    port: 10610
+    unit_id: 1
+
+  # ── First-floor electrical panel (24-circuit) ──
+  - profile: profiles/modbus/generic_electrical_panel.yaml
+    port: 10620
+    unit_id: 1
+
+  # ── First-floor electrical meter ──
+  - profile: profiles/modbus/generic_power_meter.yaml
+    port: 10630
+    unit_id: 1

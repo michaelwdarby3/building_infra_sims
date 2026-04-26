@@ -1,0 +1,284 @@
+name: "Verdicity Demo Office"
+description: |
+  Verdicity-generated synthetic office building used by the prototype's
+  scanner_synthetic mode (asset_leadership_demo). Single source of truth
+  for the building topology — devices AND spaces live here.
+
+  This scenario is consumed two ways:
+    1. The simulator (bsim scenario ...) reads bacnet_devices + modbus_devices
+       and ignores the rest. Boots the same fleet of fake BACnet/Modbus
+       endpoints as cloudbimstorm_re1.yaml.
+    2. asset_leadership_demo/cloudbimstorm/scripts/generate_synthetic_building.py
+       reads `spaces` + the `iri:` blocks under each device and emits:
+         - cloudbimstorm/baseline/verdicity-synthetic/spaces.json
+         - cloudbimstorm/config/verdicity_synthetic_iri_map.yaml
+       Run that script after editing this file; the regenerated artifacts
+       are byte-deterministic.
+
+  IRI scheme: every space is `:Space_VDCY_<id>` and every component is
+  `:Component_VDCY_<id>` under `http://onuma.com/schema#`. Verdicity
+  namespace, no collision with Onuma's IRI allocations.
+
+# ─── Building site / floor metadata ──────────────────────────────────────
+site:
+  iri: ":Site_VDCY_DEMO_01"
+  label: "Verdicity Demo Site"
+building:
+  iri: ":Building_VDCY_DEMO_01"
+  label: "Verdicity Demo Office"
+floor:
+  iri: ":Floor_VDCY_DEMO_01"
+  label: "Ground Floor"
+
+# ─── Spaces (rooms) ──────────────────────────────────────────────────────
+# Each polygon is in room-local meters; placement_x/y locates the room in
+# the building. Coordinate convention matches the cloudBIM-API JSON shape
+# (xy plan-view; +x right, +y forward; angle in radians).
+spaces:
+  - id: VDCY-LOBBY
+    iri: ":Space_VDCY_LOBBY"
+    name: "Lobby"
+    area_m2: 20.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 5.0, y: 0.0}
+      - {x: 5.0, y: 4.0}
+      - {x: 0.0, y: 4.0}
+    placement: {x: 0.0, y: 0.0, angle: 0.0}
+
+  - id: VDCY-OFFICE
+    iri: ":Space_VDCY_OFFICE"
+    name: "Open Office"
+    area_m2: 48.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 8.0, y: 0.0}
+      - {x: 8.0, y: 6.0}
+      - {x: 0.0, y: 6.0}
+    placement: {x: 5.0, y: 0.0, angle: 0.0}
+
+  - id: VDCY-CONF
+    iri: ":Space_VDCY_CONF"
+    name: "Conference Room"
+    area_m2: 20.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 5.0, y: 0.0}
+      - {x: 5.0, y: 4.0}
+      - {x: 0.0, y: 4.0}
+    placement: {x: 13.0, y: 0.0, angle: 0.0}
+
+  - id: VDCY-SERVER
+    iri: ":Space_VDCY_SERVER"
+    name: "Server Room"
+    area_m2: 12.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 3.0, y: 0.0}
+      - {x: 3.0, y: 4.0}
+      - {x: 0.0, y: 4.0}
+    placement: {x: 18.0, y: 0.0, angle: 0.0}
+
+  - id: VDCY-MECH
+    iri: ":Space_VDCY_MECH"
+    name: "Mechanical Room"
+    area_m2: 12.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 3.0, y: 0.0}
+      - {x: 3.0, y: 4.0}
+      - {x: 0.0, y: 4.0}
+    placement: {x: 21.0, y: 0.0, angle: 0.0}
+
+  - id: VDCY-ROOF
+    iri: ":Space_VDCY_ROOF"
+    name: "Rooftop"
+    area_m2: 100.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 25.0, y: 0.0}
+      - {x: 25.0, y: 4.0}
+      - {x: 0.0, y: 4.0}
+    placement: {x: 0.0, y: 8.0, angle: 0.0}
+
+# ─── BACnet devices ──────────────────────────────────────────────────────
+# Same device fleet (same device_ids) as cloudbimstorm_re1.yaml so a single
+# running simulator can serve both scenarios. Per-device `iri:` block tells
+# the generator how to emit the iri_map.yaml entry; the simulator ignores
+# this field.
+bacnet_devices:
+  - profile: profiles/bacnet/generic_fire_alarm_panel.yaml
+    device_id: 8200
+    location: VDCY-LOBBY
+    iri:
+      component: ":Component_VDCY_FACP_01"
+      onuma_id: 9100001
+      instance_name: "PNL-MAIN-01"
+      component_name: "VDCY-FireAlarmPanel-Demo"
+      guid: "VdCyDemo_FACP_01_StableA"
+      domain: "s223:Domain-Electrical"
+      role: "FireControlPanel"
+
+  - profile: profiles/bacnet/generic_elevator.yaml
+    device_id: 8210
+    location: VDCY-LOBBY
+    iri:
+      component: ":Component_VDCY_ELEV_01"
+      onuma_id: 9100010
+      instance_name: "ELEV-01"
+      component_name: "VDCY-ElevatorCab-Demo"
+      guid: "VdCyDemo_ELEV_01_StableB"
+      domain: "s223:Domain-Conveying"
+      role: "ElevatorCab"
+
+  - profile: profiles/bacnet/generic_heat_pump.yaml
+    device_id: 8220
+    location: VDCY-ROOF
+    iri:
+      component: ":Component_VDCY_ASHP_01"
+      onuma_id: 9100020
+      instance_name: "ASHP-01"
+      component_name: "VDCY-RooftopHeatPump-Demo"
+      guid: "VdCyDemo_ASHP_01_StableC"
+      domain: "s223:Domain-HVAC"
+      role: "AirSourceHeatPump"
+
+  - profile: profiles/bacnet/generic_heat_pump.yaml
+    device_id: 8221
+    location: VDCY-ROOF
+    iri:
+      component: ":Component_VDCY_ASHP_02"
+      onuma_id: 9100021
+      instance_name: "ASHP-02"
+      component_name: "VDCY-RooftopHeatPump-Demo"
+      guid: "VdCyDemo_ASHP_02_StableD"
+      domain: "s223:Domain-HVAC"
+      role: "AirSourceHeatPump"
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8230
+    location: VDCY-OFFICE
+    iri:
+      component: ":Component_VDCY_ENV_OFFICE_01"
+      onuma_id: 9100030
+      instance_name: "ENV-OFFICE-01"
+      component_name: "VDCY-EnvironmentalSensors-OpenOffice"
+      guid: "VdCyDemo_ENV_OFFICE_01_StableE"
+      domain: "s223:Domain-HVAC"
+      role: "EnvironmentalSensorRack"
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8231
+    location: VDCY-CONF
+    iri:
+      component: ":Component_VDCY_ENV_CONF_01"
+      onuma_id: 9100031
+      instance_name: "ENV-CONF-01"
+      component_name: "VDCY-EnvironmentalSensors-Conference"
+      guid: "VdCyDemo_ENV_CONF_01_StableF"
+      domain: "s223:Domain-HVAC"
+      role: "EnvironmentalSensorRack"
+
+# ─── Modbus devices ──────────────────────────────────────────────────────
+modbus_devices:
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10602
+    unit_id: 1
+    location: VDCY-MECH
+    iri:
+      component: ":Component_VDCY_PUMP_01"
+      onuma_id: 9100040
+      instance_name: "PUMP-FIRE-01"
+      component_name: "VDCY-FirePump-Demo"
+      guid: "VdCyDemo_PUMP_01_StableG"
+      domain: "s223:Domain-FireProtection"
+      role: "FirePump"
+      medium: "s223:Water-FireProtection"
+      feeds: ":Component_VDCY_FACP_01"
+
+  - profile: profiles/modbus/generic_power_disconnect.yaml
+    port: 10610
+    unit_id: 1
+    location: VDCY-MECH
+    iri:
+      component: ":Component_VDCY_DISC_01"
+      onuma_id: 9100050
+      instance_name: "DISC-MAIN-01"
+      component_name: "VDCY-PowerDisconnect-Demo"
+      guid: "VdCyDemo_DISC_01_StableH"
+      domain: "s223:Domain-Electrical"
+      role: "PowerDisconnect"
+
+  - profile: profiles/modbus/generic_electrical_panel.yaml
+    port: 10620
+    unit_id: 1
+    location: VDCY-MECH
+    iri:
+      component: ":Component_VDCY_PNL_01"
+      onuma_id: 9100060
+      instance_name: "PNL-MAIN-01-MOD"
+      component_name: "VDCY-MainElectricalPanel-Demo"
+      guid: "VdCyDemo_PNL_01_StableJ"
+      domain: "s223:Domain-Electrical"
+      role: "ElectricalPanel"
+      fed_from: ":Component_VDCY_DISC_01"
+
+  - profile: profiles/modbus/generic_power_meter.yaml
+    port: 10630
+    unit_id: 1
+    location: VDCY-MECH
+    iri:
+      component: ":Component_VDCY_METER_01"
+      onuma_id: 9100070
+      instance_name: "METER-MAIN-01"
+      component_name: "VDCY-MainElectricalMeter-Demo"
+      guid: "VdCyDemo_METER_01_StableK"
+      domain: "s223:Domain-Electrical"
+      role: "ElectricalMeter"
+      monitors: ":Component_VDCY_PNL_01"
+
+# ─── External Access Layer (the explicit ZAiMAP-doc ask) ────────────────
+external_access_layer:
+  - iri: ":VerdicityScanner"
+    type: "vdcy:ExternalApplication"
+    label: "Verdicity Infrastructure Scanner"
+    can_query:
+      - ":Component_VDCY_FACP_01"
+      - ":Component_VDCY_PUMP_01"
+      - ":Component_VDCY_ELEV_01"
+      - ":Component_VDCY_DISC_01"
+      - ":Component_VDCY_ASHP_01"
+      - ":Component_VDCY_ASHP_02"
+    receives_data_from:
+      - ":Component_VDCY_FACP_01"
+    has_endpoint: "https://verdicity.io/scanner/api/rdf/export?profile=cloudbimstorm"
+
+  - iri: ":VerdicityFireDepartmentDemo"
+    type: "vdcy:FireDepartment"
+    label: "Demo Fire Department (synthetic-building exercise)"
+    can_query:
+      - ":VerdicityScanner"
+    has_access_to:
+      - ":Site_VDCY_DEMO_01"
+
+# ─── Verdicity-extended namespace (emitted as-is by the iri_map) ────────
+verdicity_namespace:
+  prefix: "vdcy"
+  uri: "https://verdicity.io/ns/cloudbimstorm#"
+  classes:
+    - "ExternalApplication"
+    - "ExternalResponder"
+    - "FireDepartment"
+    - "IncidentCommander"
+    - "Modbus_ExternalReference"
+  predicates:
+    - "canQuery"
+    - "hasAccessTo"
+    - "receivesDataFrom"
+    - "hasEndpoint"
+    - "modbus-port"
+    - "modbus-unit-id"
+    - "modbus-register-type"
+    - "modbus-register-address"
+    - "modbus-data-type"
+    - "modbus-present-value"
