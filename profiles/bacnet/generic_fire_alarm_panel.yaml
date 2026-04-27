@@ -129,3 +129,43 @@ objects:
           weight: 0.5
       hold_min: 600
       hold_max: 3600
+
+  # ── Operator-trigger zone alarms ──
+  # Parallel binary-value objects that mirror the binary-input zone alarms
+  # above but are commandable. The infrastructure_scanner's overrides API
+  # can WriteProperty to these, which propagates to the simulator's
+  # priority array and gets read back on the next poll cycle. The label
+  # contains "Alarm" so the prototype's /api/alarms SPARQL matches it
+  # alongside the simulation-driven binary-inputs.
+  - object_type: binary-value
+    instance: 1
+    name: "Zone 1 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 2
+    name: "Zone 2 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 3
+    name: "Zone 3 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 4
+    name: "Zone 4 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 5
+    name: "Zone 5 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 6
+    name: "Zone 6 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 7
+    name: "Zone 7 Alarm Trigger"
+    present_value: inactive
+  - object_type: binary-value
+    instance: 8
+    name: "Zone 8 Alarm Trigger"
+    present_value: inactive
