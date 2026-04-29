@@ -55,7 +55,7 @@ class SkyboxClient:
         base_url: str,
         username: str | None = None,
         password: str | None = None,
-        timeout: float = 30.0,
+        timeout: float = 120.0,
     ):
         self.base_url = base_url.rstrip("/")
         self._username = username

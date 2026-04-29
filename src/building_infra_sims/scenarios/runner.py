@@ -10,6 +10,7 @@ Optionally registers all simulated devices with the gateway via its API.
 
 import asyncio
 import logging
+import os
 import signal
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,11 @@ from building_infra_sims.modbus.profiles import (
 logger = logging.getLogger(__name__)
 console = Console()
 
-BACNET_BASE_PORT = 47808
+BACNET_BASE_PORT = int(os.environ.get("BSIM_BACNET_BASE_PORT", "47808"))
+# Added to every Modbus device port at scenario load. Use to deconflict
+# multiple simulators sharing one network namespace whose scenarios
+# happen to pin overlapping Modbus TCP ports.
+MODBUS_PORT_SHIFT = int(os.environ.get("BSIM_MODBUS_PORT_SHIFT", "0"))
 
 
 def load_scenario(scenario_path: str | Path) -> dict[str, Any]:
@@ -78,9 +83,11 @@ class ScenarioRunner:
                 bacnet_port = max(bacnet_port, port + 1)
 
         for dev in self._scenario.get("modbus_devices", []):
+            base_port = dev.get("port")
+            shifted_port = base_port + MODBUS_PORT_SHIFT if base_port else None
             sim = create_modbus_sim(
                 profile_path=dev["profile"],
-                port=dev.get("port"),
+                port=shifted_port,
                 unit_id=dev.get("unit_id"),
                 bind_address=dev.get("bind_address", "0.0.0.0"),
             )
@@ -205,10 +212,18 @@ class ScenarioRunner:
         url = base_url or settings.skybox_base_url
         user = username or settings.skybox_username
         pwd = password or settings.skybox_password
+        advertise_host = settings.skybox_advertise_host or None
+        conn_prefix = settings.skybox_connection_prefix
 
         if not user or not pwd:
             logger.warning("Gateway credentials not configured — skipping registration")
             return
+
+        if advertise_host:
+            logger.info(
+                f"BSIM_SKYBOX_ADVERTISE_HOST set — registering all devices with "
+                f"ip_address={advertise_host} (overrides per-device IPs)"
+            )
 
         async with SkyboxClient(url, user, pwd) as sb:
             await sb.sign_in()
@@ -223,12 +238,12 @@ class ScenarioRunner:
 
             # ── BACnet devices ──
             for sim in self._bacnet_sims:
-                conn_name = f"Sim: {sim.device_name}"
+                conn_name = f"{conn_prefix}{sim.device_name}"
                 if conn_name in existing_names:
                     logger.info(f"Connection '{conn_name}' already exists — skipping")
                     continue
 
-                ip = sim.ip_address or self._local_ip
+                ip = advertise_host or sim.ip_address or self._local_ip
                 conn = await sb.create_connection(
                     ConnectionCreate(
                         name=conn_name,
@@ -272,12 +287,12 @@ class ScenarioRunner:
 
             # ── Modbus devices ──
             for sim in self._modbus_sims:
-                conn_name = f"Sim: {sim.device_name}"
+                conn_name = f"{conn_prefix}{sim.device_name}"
                 if conn_name in existing_names:
                     logger.info(f"Connection '{conn_name}' already exists — skipping")
                     continue
 
-                ip = self._local_ip or "127.0.0.1"
+                ip = advertise_host or self._local_ip or "127.0.0.1"
                 conn = await sb.create_connection(
                     ConnectionCreate(
                         name=conn_name,
@@ -349,31 +364,58 @@ class ScenarioRunner:
         username: str | None = None,
         password: str | None = None,
     ) -> None:
-        """Remove all 'Sim: ...' connections from the gateway."""
+        """Remove this scenario's connections from the gateway.
+
+        Scoped by `BSIM_SKYBOX_CONNECTION_PREFIX` so multi-sidecar
+        deployments don't wipe each other's registrations.
+        """
         from building_infra_sims.config import settings
         from building_infra_sims.skybox.client import SkyboxClient
 
         url = base_url or settings.skybox_base_url
         user = username or settings.skybox_username
         pwd = password or settings.skybox_password
+        conn_prefix = settings.skybox_connection_prefix
 
         async with SkyboxClient(url, user, pwd) as sb:
             await sb.sign_in()
             conns = await sb.list_connections()
             removed = 0
             for c in conns.items:
-                if c.name.startswith("Sim: ") and c.id:
+                if c.name.startswith(conn_prefix) and c.id:
                     await sb.delete_connection(c.id)
                     logger.info(f"Removed connection '{c.name}'")
                     removed += 1
 
-            console.print(f"[bold]Removed {removed} simulated connections from gateway[/bold]")
+            console.print(
+                f"[bold]Removed {removed} '{conn_prefix}'-prefixed connections from gateway[/bold]"
+            )
 
     async def run_forever(self, setup_skybox: bool = False) -> None:
         """Start and run until SIGINT/SIGTERM."""
         await self.start()
 
         if setup_skybox:
+            # When multiple sidecars share a single gateway, stagger
+            # them via BSIM_REGISTER_DELAY_S so the scanner isn't
+            # serving N concurrent floods of POST /api/connections at
+            # boot — the smaller sim should set this to 0 and the
+            # larger one should set it to ~30s (or vice versa).
+            delay_s = float(os.environ.get("BSIM_REGISTER_DELAY_S", "0"))
+            if delay_s > 0:
+                logger.info(
+                    f"BSIM_REGISTER_DELAY_S={delay_s}: deferring skybox "
+                    f"registration to give other sidecars head room"
+                )
+                await asyncio.sleep(delay_s)
+            # Sidecar deployments persist the gateway DB on EFS, which
+            # means stale connections from a prior task run (with a
+            # different awsvpc IP) survive across deploys and cause
+            # permanent poll errors. Clear them before re-registering.
+            try:
+                await self.unregister_from_skybox()
+            except Exception as e:
+                logger.warning(f"Pre-registration cleanup failed: {e}")
             await self.register_with_skybox()
 
         stop_event = asyncio.Event()
