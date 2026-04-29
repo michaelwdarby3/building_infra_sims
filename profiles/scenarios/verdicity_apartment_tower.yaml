@@ -1,0 +1,781 @@
+name: "Verdicity Apartment Tower"
+description: |
+  Verdicity-generated synthetic 8-story apartment tower used by the
+  prototype's scanner_apartment mode. Single source of truth for the
+  building topology (devices + spaces).
+
+  Building shape:
+    * Footprint 14m × 10m, 8 floors at 3.0m floor-height = 24m tall
+    * Floor 1: Lobby + Mech Room (back-of-house ground floor)
+    * Floors 2–7: 2 apartment units each (Unit-A on left, Unit-B on right)
+    * Floor 8: 2 penthouse units
+    * Roof: rooftop equipment deck above floor 8
+
+  Same fleet of 10 simulated BACnet/Modbus devices as the demo office
+  (FACP, fire pump, elevator, ASHPs, panels) — re-pinned to apartment
+  spaces via the iri_map. The simulator scenario is interchangeable
+  with cloudbimstorm_re1.yaml / verdicity_demo_office.yaml; only the
+  iri_map binding the scanner reads differs.
+
+  IRI scheme: every space is `:Space_VDCY_APT_<id>` and every component
+  is `:Component_VDCY_APT_<id>` under `http://onuma.com/schema#`.
+
+site:
+  iri: ":Site_VDCY_APT_01"
+  label: "Verdicity Apartment Site"
+building:
+  iri: ":Building_VDCY_APT_01"
+  label: "Verdicity Apartment Tower"
+floor:
+  # Single floor IRI for the iri_map's top-level. Per-floor identity is
+  # encoded in the per-space IRIs (`:Space_VDCY_APT_F<n>_*`); we'd need
+  # a multi-floor scanner-export schema to lift each story to its own
+  # `:Floor_*` IRI, which is out of scope here.
+  iri: ":Floor_VDCY_APT_STACK"
+  label: "Apartment Stack"
+
+# Tower-wide constants — used both for the spatial layout below and as
+# documentation. Floor-height is the slab-to-slab distance; ceiling-height
+# (separate field below) is the vertical clearance inside a unit.
+ceiling_height_m: 2.7
+
+# ─── Spaces (rooms, stacked) ─────────────────────────────────────────────
+# Coordinates: per-floor footprint is 14m wide (x) × 10m deep (y). Each
+# space's polygon is in room-local meters; placement_x/y is the global
+# in-floor offset; placement_z is the vertical floor offset (m). Floor 1
+# at z=0, Floor 2 at z=3.0, ..., Floor 8 at z=21.0, Roof at z=24.0.
+spaces:
+  # ── Floor 1: Lobby + Mech Room ────────────────────────────────────
+  - id: VDCY-APT-F1-LOBBY
+    iri: ":Space_VDCY_APT_F1_LOBBY"
+    name: "Floor 1 · Lobby"
+    floor_index: 1
+    area_m2: 80.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 8.0, y: 0.0}
+      - {x: 8.0, y: 10.0}
+      - {x: 0.0, y: 10.0}
+    placement: {x: 0.0, y: 0.0, z: 0.0, angle: 0.0}
+
+  - id: VDCY-APT-F1-MECH
+    iri: ":Space_VDCY_APT_F1_MECH"
+    name: "Floor 1 · Mechanical Room"
+    floor_index: 1
+    area_m2: 60.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 6.0, y: 0.0}
+      - {x: 6.0, y: 10.0}
+      - {x: 0.0, y: 10.0}
+    placement: {x: 8.0, y: 0.0, z: 0.0, angle: 0.0}
+
+  # ── Floor 2: 2 apartment units ────────────────────────────────────
+  - id: VDCY-APT-F2-A
+    iri: ":Space_VDCY_APT_F2_A"
+    name: "Floor 2 · Unit A"
+    floor_index: 2
+    area_m2: 70.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 7.0, y: 0.0}
+      - {x: 7.0, y: 10.0}
+      - {x: 0.0, y: 10.0}
+    placement: {x: 0.0, y: 0.0, z: 3.0, angle: 0.0}
+
+  - id: VDCY-APT-F2-B
+    iri: ":Space_VDCY_APT_F2_B"
+    name: "Floor 2 · Unit B"
+    floor_index: 2
+    area_m2: 70.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 7.0, y: 0.0}
+      - {x: 7.0, y: 10.0}
+      - {x: 0.0, y: 10.0}
+    placement: {x: 7.0, y: 0.0, z: 3.0, angle: 0.0}
+
+  # ── Floor 3 ────────────────────────────────────────────────────────
+  - id: VDCY-APT-F3-A
+    iri: ":Space_VDCY_APT_F3_A"
+    name: "Floor 3 · Unit A"
+    floor_index: 3
+    area_m2: 70.0
+    polygon: &APT_LEFT
+      - {x: 0.0, y: 0.0}
+      - {x: 7.0, y: 0.0}
+      - {x: 7.0, y: 10.0}
+      - {x: 0.0, y: 10.0}
+    placement: {x: 0.0, y: 0.0, z: 6.0, angle: 0.0}
+
+  - id: VDCY-APT-F3-B
+    iri: ":Space_VDCY_APT_F3_B"
+    name: "Floor 3 · Unit B"
+    floor_index: 3
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 7.0, y: 0.0, z: 6.0, angle: 0.0}
+
+  # ── Floor 4 ────────────────────────────────────────────────────────
+  - id: VDCY-APT-F4-A
+    iri: ":Space_VDCY_APT_F4_A"
+    name: "Floor 4 · Unit A"
+    floor_index: 4
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 0.0, y: 0.0, z: 9.0, angle: 0.0}
+
+  - id: VDCY-APT-F4-B
+    iri: ":Space_VDCY_APT_F4_B"
+    name: "Floor 4 · Unit B"
+    floor_index: 4
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 7.0, y: 0.0, z: 9.0, angle: 0.0}
+
+  # ── Floor 5 ────────────────────────────────────────────────────────
+  - id: VDCY-APT-F5-A
+    iri: ":Space_VDCY_APT_F5_A"
+    name: "Floor 5 · Unit A"
+    floor_index: 5
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 0.0, y: 0.0, z: 12.0, angle: 0.0}
+
+  - id: VDCY-APT-F5-B
+    iri: ":Space_VDCY_APT_F5_B"
+    name: "Floor 5 · Unit B"
+    floor_index: 5
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 7.0, y: 0.0, z: 12.0, angle: 0.0}
+
+  # ── Floor 6 ────────────────────────────────────────────────────────
+  - id: VDCY-APT-F6-A
+    iri: ":Space_VDCY_APT_F6_A"
+    name: "Floor 6 · Unit A"
+    floor_index: 6
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 0.0, y: 0.0, z: 15.0, angle: 0.0}
+
+  - id: VDCY-APT-F6-B
+    iri: ":Space_VDCY_APT_F6_B"
+    name: "Floor 6 · Unit B"
+    floor_index: 6
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 7.0, y: 0.0, z: 15.0, angle: 0.0}
+
+  # ── Floor 7 ────────────────────────────────────────────────────────
+  - id: VDCY-APT-F7-A
+    iri: ":Space_VDCY_APT_F7_A"
+    name: "Floor 7 · Unit A"
+    floor_index: 7
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 0.0, y: 0.0, z: 18.0, angle: 0.0}
+
+  - id: VDCY-APT-F7-B
+    iri: ":Space_VDCY_APT_F7_B"
+    name: "Floor 7 · Unit B"
+    floor_index: 7
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 7.0, y: 0.0, z: 18.0, angle: 0.0}
+
+  # ── Floor 8: Penthouses ─────────────────────────────────────────────
+  - id: VDCY-APT-F8-PHA
+    iri: ":Space_VDCY_APT_F8_PHA"
+    name: "Floor 8 · Penthouse A"
+    floor_index: 8
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 0.0, y: 0.0, z: 21.0, angle: 0.0}
+
+  - id: VDCY-APT-F8-PHB
+    iri: ":Space_VDCY_APT_F8_PHB"
+    name: "Floor 8 · Penthouse B"
+    floor_index: 8
+    area_m2: 70.0
+    polygon: *APT_LEFT
+    placement: {x: 7.0, y: 0.0, z: 21.0, angle: 0.0}
+
+  # ── Roof: equipment deck ────────────────────────────────────────────
+  - id: VDCY-APT-ROOF
+    iri: ":Space_VDCY_APT_ROOF"
+    name: "Rooftop Equipment Deck"
+    floor_index: 9
+    area_m2: 140.0
+    polygon:
+      - {x: 0.0, y: 0.0}
+      - {x: 14.0, y: 0.0}
+      - {x: 14.0, y: 10.0}
+      - {x: 0.0, y: 10.0}
+    placement: {x: 0.0, y: 0.0, z: 24.0, angle: 0.0}
+
+# ─── BACnet devices ──────────────────────────────────────────────────────
+# Same device fleet as cloudbimstorm_re1.yaml + verdicity_demo_office.yaml.
+# Only the iri block differs (binding to apartment spaces). Run-side, only
+# one scenario can be loaded at a time on the BACnet UDP port — at demo
+# time you pick which iri_map to bind, NOT which simulator process to run.
+bacnet_devices:
+  - profile: profiles/bacnet/generic_fire_alarm_panel.yaml
+    device_id: 8200
+    iri:
+      component: ":Component_VDCY_APT_FACP_01"
+      onuma_id: 9200001
+      instance_name: "PNL-MAIN-01"
+      component_name: "VDCY-FireAlarmPanel-Apartment"
+      guid: "VdCyApt_FACP_01_StableA"
+      domain: "s223:Domain-Electrical"
+      role: "FireControlPanel"
+      bind_existing: false
+    location: VDCY-APT-F1-LOBBY
+
+  - profile: profiles/bacnet/generic_elevator.yaml
+    device_id: 8210
+    iri:
+      component: ":Component_VDCY_APT_ELEV_01"
+      onuma_id: 9200010
+      instance_name: "ELEV-01"
+      component_name: "VDCY-ElevatorCab-Apartment"
+      guid: "VdCyApt_ELEV_01_StableB"
+      domain: "s223:Domain-Conveying"
+      role: "ElevatorCab"
+      bind_existing: false
+    location: VDCY-APT-F1-LOBBY
+
+  - profile: profiles/bacnet/generic_heat_pump.yaml
+    device_id: 8220
+    iri:
+      component: ":Component_VDCY_APT_ASHP_01"
+      onuma_id: 9200020
+      instance_name: "ASHP-01"
+      component_name: "VDCY-RooftopHeatPump-Apartment"
+      guid: "VdCyApt_ASHP_01_StableC"
+      domain: "s223:Domain-HVAC"
+      role: "AirSourceHeatPump"
+      bind_existing: false
+    location: VDCY-APT-ROOF
+
+  - profile: profiles/bacnet/generic_heat_pump.yaml
+    device_id: 8221
+    iri:
+      component: ":Component_VDCY_APT_ASHP_02"
+      onuma_id: 9200021
+      instance_name: "ASHP-02"
+      component_name: "VDCY-RooftopHeatPump-Apartment"
+      guid: "VdCyApt_ASHP_02_StableD"
+      domain: "s223:Domain-HVAC"
+      role: "AirSourceHeatPump"
+      bind_existing: false
+    location: VDCY-APT-ROOF
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8230
+    iri:
+      component: ":Component_VDCY_APT_ENV_F4A"
+      onuma_id: 9200030
+      instance_name: "ENV-F4A-01"
+      component_name: "VDCY-EnvironmentalSensors-Floor4UnitA"
+      guid: "VdCyApt_ENV_F4A_01_StableE"
+      domain: "s223:Domain-HVAC"
+      role: "EnvironmentalSensorRack"
+      bind_existing: false
+    location: VDCY-APT-F4-A
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8231
+    iri:
+      component: ":Component_VDCY_APT_ENV_PHA"
+      onuma_id: 9200031
+      instance_name: "ENV-PHA-01"
+      component_name: "VDCY-EnvironmentalSensors-PenthouseA"
+      guid: "VdCyApt_ENV_PHA_01_StableF"
+      domain: "s223:Domain-HVAC"
+      role: "EnvironmentalSensorRack"
+      bind_existing: false
+    location: VDCY-APT-F8-PHA
+
+  # ─── DHW boiler — Floor 1 mechanical room ─────────────────────────
+  - profile: profiles/bacnet/generic_boiler.yaml
+    device_id: 8202
+    iri:
+      component: ":Component_VDCY_APT_BOILER_01"
+      onuma_id: 9200002
+      instance_name: "BOILER-DHW-01"
+      component_name: "VDCY-DHWBoiler-Apartment"
+      guid: "VdCyApt_BOILER_01_StableM"
+      domain: "s223:Domain-HVAC"
+      role: "Boiler"
+      medium: "s223:Water-DomesticHotWater"
+      bind_existing: false
+    location: VDCY-APT-F1-MECH
+
+  # ─── Per-unit thermostats (FCU stand-in) — every apartment + PHB ──
+  # Floors 2-7 (12 units) + Penthouse B = 13 thermostats. Penthouse A
+  # already has ENV-PHA-01 from the original device fleet.
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8240
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F2A"
+      onuma_id: 9200240
+      instance_name: "TSTAT-F2A"
+      component_name: "VDCY-Thermostat-Floor2UnitA"
+      guid: "VdCyApt_TSTAT_F2A_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F2-A
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8241
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F2B"
+      onuma_id: 9200241
+      instance_name: "TSTAT-F2B"
+      component_name: "VDCY-Thermostat-Floor2UnitB"
+      guid: "VdCyApt_TSTAT_F2B_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F2-B
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8242
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F3A"
+      onuma_id: 9200242
+      instance_name: "TSTAT-F3A"
+      component_name: "VDCY-Thermostat-Floor3UnitA"
+      guid: "VdCyApt_TSTAT_F3A_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F3-A
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8243
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F3B"
+      onuma_id: 9200243
+      instance_name: "TSTAT-F3B"
+      component_name: "VDCY-Thermostat-Floor3UnitB"
+      guid: "VdCyApt_TSTAT_F3B_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F3-B
+
+  # F4-A already has ENV-F4A-01 from the original device fleet — only
+  # add F4-B's thermostat.
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8245
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F4B"
+      onuma_id: 9200245
+      instance_name: "TSTAT-F4B"
+      component_name: "VDCY-Thermostat-Floor4UnitB"
+      guid: "VdCyApt_TSTAT_F4B_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F4-B
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8246
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F5A"
+      onuma_id: 9200246
+      instance_name: "TSTAT-F5A"
+      component_name: "VDCY-Thermostat-Floor5UnitA"
+      guid: "VdCyApt_TSTAT_F5A_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F5-A
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8247
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F5B"
+      onuma_id: 9200247
+      instance_name: "TSTAT-F5B"
+      component_name: "VDCY-Thermostat-Floor5UnitB"
+      guid: "VdCyApt_TSTAT_F5B_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F5-B
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8248
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F6A"
+      onuma_id: 9200248
+      instance_name: "TSTAT-F6A"
+      component_name: "VDCY-Thermostat-Floor6UnitA"
+      guid: "VdCyApt_TSTAT_F6A_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F6-A
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8249
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F6B"
+      onuma_id: 9200249
+      instance_name: "TSTAT-F6B"
+      component_name: "VDCY-Thermostat-Floor6UnitB"
+      guid: "VdCyApt_TSTAT_F6B_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F6-B
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8250
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F7A"
+      onuma_id: 9200250
+      instance_name: "TSTAT-F7A"
+      component_name: "VDCY-Thermostat-Floor7UnitA"
+      guid: "VdCyApt_TSTAT_F7A_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F7-A
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8251
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_F7B"
+      onuma_id: 9200251
+      instance_name: "TSTAT-F7B"
+      component_name: "VDCY-Thermostat-Floor7UnitB"
+      guid: "VdCyApt_TSTAT_F7B_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F7-B
+
+  - profile: profiles/bacnet/generic_fcu.yaml
+    device_id: 8253
+    iri:
+      component: ":Component_VDCY_APT_TSTAT_PHB"
+      onuma_id: 9200253
+      instance_name: "TSTAT-PHB"
+      component_name: "VDCY-Thermostat-PenthouseB"
+      guid: "VdCyApt_TSTAT_PHB_01"
+      domain: "s223:Domain-HVAC"
+      role: "Thermostat"
+      bind_existing: false
+    location: VDCY-APT-F8-PHB
+
+  # ─── Per-unit lighting controllers ────────────────────────────────
+  # 14 lighting controllers — one per apartment + both penthouses.
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8260
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F2A"
+      onuma_id: 9200260
+      instance_name: "LIGHT-F2A"
+      component_name: "VDCY-LightingController-Floor2UnitA"
+      guid: "VdCyApt_LIGHT_F2A_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F2-A
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8261
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F2B"
+      onuma_id: 9200261
+      instance_name: "LIGHT-F2B"
+      component_name: "VDCY-LightingController-Floor2UnitB"
+      guid: "VdCyApt_LIGHT_F2B_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F2-B
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8262
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F3A"
+      onuma_id: 9200262
+      instance_name: "LIGHT-F3A"
+      component_name: "VDCY-LightingController-Floor3UnitA"
+      guid: "VdCyApt_LIGHT_F3A_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F3-A
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8263
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F3B"
+      onuma_id: 9200263
+      instance_name: "LIGHT-F3B"
+      component_name: "VDCY-LightingController-Floor3UnitB"
+      guid: "VdCyApt_LIGHT_F3B_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F3-B
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8264
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F4A"
+      onuma_id: 9200264
+      instance_name: "LIGHT-F4A"
+      component_name: "VDCY-LightingController-Floor4UnitA"
+      guid: "VdCyApt_LIGHT_F4A_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F4-A
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8265
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F4B"
+      onuma_id: 9200265
+      instance_name: "LIGHT-F4B"
+      component_name: "VDCY-LightingController-Floor4UnitB"
+      guid: "VdCyApt_LIGHT_F4B_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F4-B
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8266
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F5A"
+      onuma_id: 9200266
+      instance_name: "LIGHT-F5A"
+      component_name: "VDCY-LightingController-Floor5UnitA"
+      guid: "VdCyApt_LIGHT_F5A_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F5-A
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8267
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F5B"
+      onuma_id: 9200267
+      instance_name: "LIGHT-F5B"
+      component_name: "VDCY-LightingController-Floor5UnitB"
+      guid: "VdCyApt_LIGHT_F5B_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F5-B
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8268
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F6A"
+      onuma_id: 9200268
+      instance_name: "LIGHT-F6A"
+      component_name: "VDCY-LightingController-Floor6UnitA"
+      guid: "VdCyApt_LIGHT_F6A_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F6-A
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8269
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F6B"
+      onuma_id: 9200269
+      instance_name: "LIGHT-F6B"
+      component_name: "VDCY-LightingController-Floor6UnitB"
+      guid: "VdCyApt_LIGHT_F6B_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F6-B
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8270
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F7A"
+      onuma_id: 9200270
+      instance_name: "LIGHT-F7A"
+      component_name: "VDCY-LightingController-Floor7UnitA"
+      guid: "VdCyApt_LIGHT_F7A_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F7-A
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8271
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_F7B"
+      onuma_id: 9200271
+      instance_name: "LIGHT-F7B"
+      component_name: "VDCY-LightingController-Floor7UnitB"
+      guid: "VdCyApt_LIGHT_F7B_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F7-B
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8272
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_PHA"
+      onuma_id: 9200272
+      instance_name: "LIGHT-PHA"
+      component_name: "VDCY-LightingController-PenthouseA"
+      guid: "VdCyApt_LIGHT_PHA_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F8-PHA
+
+  - profile: profiles/bacnet/generic_lighting_controller.yaml
+    device_id: 8273
+    iri:
+      component: ":Component_VDCY_APT_LIGHT_PHB"
+      onuma_id: 9200273
+      instance_name: "LIGHT-PHB"
+      component_name: "VDCY-LightingController-PenthouseB"
+      guid: "VdCyApt_LIGHT_PHB_01"
+      domain: "s223:Domain-Electrical"
+      role: "LightingController"
+      bind_existing: false
+    location: VDCY-APT-F8-PHB
+
+# ─── Modbus devices ──────────────────────────────────────────────────────
+modbus_devices:
+  - profile: profiles/modbus/generic_pump.yaml
+    port: 10602
+    unit_id: 1
+    iri:
+      component: ":Component_VDCY_APT_PUMP_01"
+      onuma_id: 9200040
+      instance_name: "PUMP-FIRE-01"
+      component_name: "VDCY-FirePump-Apartment"
+      guid: "VdCyApt_PUMP_01_StableG"
+      domain: "s223:Domain-FireProtection"
+      role: "FirePump"
+      medium: "s223:Water-FireProtection"
+      feeds: ":Component_VDCY_APT_FACP_01"
+      bind_existing: false
+    location: VDCY-APT-F1-MECH
+
+  - profile: profiles/modbus/generic_power_disconnect.yaml
+    port: 10610
+    unit_id: 1
+    iri:
+      component: ":Component_VDCY_APT_DISC_01"
+      onuma_id: 9200050
+      instance_name: "DISC-MAIN-01"
+      component_name: "VDCY-PowerDisconnect-Apartment"
+      guid: "VdCyApt_DISC_01_StableH"
+      domain: "s223:Domain-Electrical"
+      role: "PowerDisconnect"
+      bind_existing: false
+    location: VDCY-APT-F1-MECH
+
+  - profile: profiles/modbus/generic_electrical_panel.yaml
+    port: 10620
+    unit_id: 1
+    iri:
+      component: ":Component_VDCY_APT_PNL_01"
+      onuma_id: 9200060
+      instance_name: "PNL-MAIN-01-MOD"
+      component_name: "VDCY-MainElectricalPanel-Apartment"
+      guid: "VdCyApt_PNL_01_StableJ"
+      domain: "s223:Domain-Electrical"
+      role: "ElectricalPanel"
+      fed_from: ":Component_VDCY_APT_DISC_01"
+      bind_existing: false
+    location: VDCY-APT-F1-MECH
+
+  - profile: profiles/modbus/generic_power_meter.yaml
+    port: 10630
+    unit_id: 1
+    iri:
+      component: ":Component_VDCY_APT_METER_01"
+      onuma_id: 9200070
+      instance_name: "METER-MAIN-01"
+      component_name: "VDCY-MainElectricalMeter-Apartment"
+      guid: "VdCyApt_METER_01_StableK"
+      domain: "s223:Domain-Electrical"
+      role: "ElectricalMeter"
+      monitors: ":Component_VDCY_APT_PNL_01"
+      bind_existing: false
+    location: VDCY-APT-F1-MECH
+
+  - profile: profiles/modbus/generic_weather_station.yaml
+    port: 10640
+    unit_id: 1
+    iri:
+      component: ":Component_VDCY_APT_WEATHER_01"
+      onuma_id: 9200080
+      instance_name: "WEATHER-ROOF-01"
+      component_name: "VDCY-WeatherStation-Apartment"
+      guid: "VdCyApt_WEATHER_01_StableL"
+      domain: "s223:Domain-HVAC"
+      role: "WeatherStation"
+      bind_existing: false
+    location: VDCY-APT-ROOF
+
+# ─── External Access Layer ───────────────────────────────────────────────
+external_access_layer:
+  - iri: ":VerdicityScanner"
+    type: "vdcy:ExternalApplication"
+    label: "Verdicity Infrastructure Scanner"
+    can_query:
+      - ":Component_VDCY_APT_FACP_01"
+      - ":Component_VDCY_APT_PUMP_01"
+      - ":Component_VDCY_APT_ELEV_01"
+      - ":Component_VDCY_APT_DISC_01"
+      - ":Component_VDCY_APT_ASHP_01"
+      - ":Component_VDCY_APT_ASHP_02"
+    receives_data_from:
+      - ":Component_VDCY_APT_FACP_01"
+    has_endpoint: "https://verdicity.io/scanner/api/rdf/export?profile=cloudbimstorm"
+
+  - iri: ":VerdicityFireDepartmentDemo"
+    type: "vdcy:FireDepartment"
+    label: "Demo Fire Department (apartment-tower exercise)"
+    can_query:
+      - ":VerdicityScanner"
+    has_access_to:
+      - ":Site_VDCY_APT_01"
+
+# ─── Verdicity-extended namespace declarations ───────────────────────────
+verdicity_namespace:
+  prefix: "vdcy"
+  uri: "https://verdicity.io/ns/cloudbimstorm#"
+  classes:
+    - "ExternalApplication"
+    - "ExternalResponder"
+    - "FireDepartment"
+    - "IncidentCommander"
+    - "Modbus_ExternalReference"
+  predicates:
+    - "canQuery"
+    - "hasAccessTo"
+    - "receivesDataFrom"
+    - "hasEndpoint"
+    - "modbus-port"
+    - "modbus-unit-id"
+    - "modbus-register-type"
+    - "modbus-register-address"
+    - "modbus-data-type"
+    - "modbus-present-value"
